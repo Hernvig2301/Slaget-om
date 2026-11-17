@@ -1,0 +1,3286 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Slaget om Sjælland 3D: Greve vs. Hillerød</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      background-color: #141210;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .font-display {
+      font-family: 'Cinzel', serif;
+    }
+
+    /* Fuldskærms 3D-lærred med 100% fokus på spillepladen */
+    #three-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      touch-action: none;
+      cursor: grab;
+    }
+    #three-container:active {
+      cursor: grabbing;
+    }
+    #three-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Sammenklappelige side-skuffer i venstre og højre side */
+    .drawer-left {
+      transform: translateX(-115%);
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .drawer-left.open {
+      transform: translateX(0);
+    }
+
+    .drawer-right {
+      transform: translateX(115%);
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .drawer-right.open {
+      transform: translateX(0);
+    }
+
+    /* Skødekort */
+    .deed-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .deed-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.2);
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(203, 213, 225, 0.3); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 999px; }
+  </style>
+</head>
+<body class="text-slate-900">
+
+  <!-- 1. FULD-SKÆRMS 3D SPILLEBORD -->
+  <div id="three-container"></div>
+
+  <!-- SVÆVENDE HOVER-TOOLTIP NÅR DU PEGER PÅ ET FELT ELLER EN KORTBUNKE PÅ BANEN -->
+  <div id="hover-tooltip" class="hidden fixed z-30 pointer-events-none px-3 py-1.5 rounded-xl bg-stone-950/90 backdrop-blur-md border border-amber-400/70 text-white text-xs shadow-xl transition-opacity duration-100">
+    <div id="tooltip-title" class="font-extrabold text-amber-300"></div>
+    <div id="tooltip-sub" class="text-[11px] text-stone-300"></div>
+  </div>
+
+  <!-- 2. KOMPAKT TOP-HUD -->
+  <header class="fixed top-0 left-0 right-0 z-20 pointer-events-none p-2.5 sm:p-3.5 flex flex-wrap items-start justify-between gap-2">
+
+    <!-- Venstre: Titel + Klikbar Spiller 1 (Greve - Blå) pille -->
+    <div class="flex flex-col gap-2 pointer-events-auto">
+      <div class="flex items-center gap-2 bg-stone-950/85 backdrop-blur-md text-white px-3 py-1.5 rounded-2xl border border-stone-700/80 shadow-xl">
+        <span class="text-base">⚔️</span>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-display text-xs sm:text-sm font-black tracking-wide">SLAGET OM SJÆLLAND</span>
+            <span class="px-1.5 py-0.2 rounded bg-amber-400 text-stone-950 text-[9px] font-black">3D</span>
+          </div>
+          <div class="text-[10px] text-stone-300 flex items-center gap-2">
+            <span>Runde <strong id="ui-round" class="text-white">1</strong></span>
+            <span>•</span>
+            <span class="text-amber-300 font-bold">Pulje: <span id="ui-pot">2.000 kr.</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Klikbar Spiller 1 Pille (Åbner Greve's skødekort lige under i venstre side) -->
+      <button id="pill-player-0" onclick="togglePlayerDrawer(0)" class="group flex items-center justify-between gap-3 bg-sky-50/95 hover:bg-white backdrop-blur-md px-3 py-2 rounded-2xl border-2 border-sky-600 shadow-xl transition-all text-left">
+        <div class="flex items-center gap-2.5">
+          <span id="p0-avatar" class="text-xl bg-sky-100 w-9 h-9 rounded-xl flex items-center justify-center border border-sky-400">🏎️</span>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span id="p0-name" class="font-extrabold text-xs sm:text-sm text-slate-900">Greve</span>
+              <span id="p0-turn-badge" class="hidden text-[9px] uppercase px-1.5 py-0.5 rounded-full bg-red-700 text-white font-black animate-pulse">Tur</span>
+            </div>
+            <div id="p0-money" class="text-xs sm:text-sm font-black text-emerald-700">30.000 kr.</div>
+          </div>
+        </div>
+        <div class="text-right pl-2 border-l border-slate-200">
+          <div class="text-[10px] font-bold text-slate-500"><span id="p0-prop-count">0</span> skøder</div>
+          <div id="p0-drawer-label" class="text-[10px] font-extrabold text-sky-700 group-hover:underline">Se kort ▾</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- Midt-top: Kamerastyring, Zoom, Tempo & Log-knap -->
+    <div class="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5 bg-stone-950/85 backdrop-blur-md px-2.5 py-1.5 rounded-2xl border border-stone-700/80 shadow-xl">
+      <!-- Tempo -->
+      <div class="flex items-center bg-stone-900 rounded-xl p-0.5 border border-stone-700">
+        <button data-speed="1" class="speed-btn px-2 py-1 rounded-lg text-[11px] font-bold bg-amber-400 text-stone-950 transition">1x</button>
+        <button data-speed="2" class="speed-btn px-2 py-1 rounded-lg text-[11px] font-bold text-stone-300 hover:text-white transition">2x</button>
+        <button data-speed="4" class="speed-btn px-2 py-1 rounded-lg text-[11px] font-bold text-stone-300 hover:text-white transition">4x</button>
+      </div>
+
+      <!-- Zoom & Kameravinkel -->
+      <button id="btn-zoom-in" class="px-2.5 py-1 rounded-xl bg-stone-800 hover:bg-stone-700 text-xs font-extrabold text-white border border-stone-700 transition" title="Zoom ind på banen">＋</button>
+      <button id="btn-zoom-out" class="px-2.5 py-1 rounded-xl bg-stone-800 hover:bg-stone-700 text-xs font-extrabold text-white border border-stone-700 transition" title="Zoom ud">－</button>
+      <button id="btn-top-view" class="px-2.5 py-1 rounded-xl bg-stone-800 hover:bg-stone-700 text-[11px] font-semibold text-amber-300 border border-stone-700 transition" title="Skift mellem 3D-vinkel og fugleperspektiv">
+        🎥 Vinkel
+      </button>
+
+      <!-- Åbn Log / Regler / Lyd -->
+      <button id="btn-toggle-log" class="px-2.5 py-1 rounded-xl bg-stone-800 hover:bg-stone-700 text-[11px] font-semibold text-stone-200 border border-stone-700 transition">
+        📜 Log
+      </button>
+      <button id="btn-rules" class="px-2.5 py-1 rounded-xl bg-stone-800 hover:bg-stone-700 text-[11px] font-semibold text-stone-200 border border-stone-700 transition" title="Spilleregler & styring">
+        ❓
+      </button>
+      <button id="btn-sound" class="px-2.5 py-1 rounded-xl bg-stone-800 hover:bg-stone-700 text-xs text-amber-400 border border-stone-700 transition" title="Slå lyd til/fra">
+        🔊
+      </button>
+    </div>
+
+    <!-- Højre: Klikbar Spiller 2 (Hillerød - Rød) Pille -->
+    <div class="pointer-events-auto">
+      <button id="pill-player-1" onclick="togglePlayerDrawer(1)" class="group flex items-center justify-between gap-3 bg-rose-50/95 hover:bg-white backdrop-blur-md px-3 py-2 rounded-2xl border-2 border-rose-600 shadow-xl transition-all text-left">
+        <div class="flex items-center gap-2.5">
+          <span id="p1-avatar" class="text-xl bg-rose-100 w-9 h-9 rounded-xl flex items-center justify-center border border-rose-400">🚙</span>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span id="p1-name" class="font-extrabold text-xs sm:text-sm text-slate-900">Hillerød</span>
+              <span id="p1-turn-badge" class="hidden text-[9px] uppercase px-1.5 py-0.5 rounded-full bg-red-700 text-white font-black animate-pulse">Tur</span>
+            </div>
+            <div id="p1-money" class="text-xs sm:text-sm font-black text-emerald-700">30.000 kr.</div>
+          </div>
+        </div>
+        <div class="text-right pl-2 border-l border-slate-200">
+          <div class="text-[10px] font-bold text-slate-500"><span id="p1-prop-count">0</span> skøder</div>
+          <div id="p1-drawer-label" class="text-[10px] font-extrabold text-rose-700 group-hover:underline">Se kort ▾</div>
+        </div>
+      </button>
+    </div>
+
+  </header>
+
+  <!-- 3A. VENSTRE SKUFFE (BLÅ / GREVE): ÅBNER LIGE UNDER GREVE I VENSTRE SIDE -->
+  <aside id="player-drawer-0" class="drawer-left fixed top-36 left-3 z-30 w-80 max-w-[90vw] max-h-[calc(100vh-14.5rem)] overflow-y-auto rounded-3xl bg-sky-50/95 backdrop-blur-lg border-2 border-sky-600 p-4 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-sky-200 pb-2 mb-3">
+      <span class="text-xs font-extrabold uppercase tracking-wider text-sky-800">🌊 Greves Skødekort</span>
+      <button onclick="closePlayerDrawer(0)" class="w-7 h-7 rounded-full bg-sky-200/80 hover:bg-sky-300 text-sky-900 font-bold text-xs flex items-center justify-center">✕</button>
+    </div>
+    <div id="player-drawer-0-content"></div>
+  </aside>
+
+  <!-- 3B. HØJRE SKUFFE (RØD / HILLERØD): ÅBNER LIGE UNDER HILLERØD I HØJRE SIDE -->
+  <aside id="player-drawer-1" class="drawer-right fixed top-36 md:top-20 right-3 z-30 w-80 max-w-[90vw] max-h-[calc(100vh-10.5rem)] overflow-y-auto rounded-3xl bg-rose-50/95 backdrop-blur-lg border-2 border-rose-600 p-4 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-rose-200 pb-2 mb-3">
+      <span class="text-xs font-extrabold uppercase tracking-wider text-rose-800">🏰 Hillerøds Skødekort</span>
+      <button onclick="closePlayerDrawer(1)" class="w-7 h-7 rounded-full bg-rose-200/80 hover:bg-rose-300 text-rose-900 font-bold text-xs flex items-center justify-center">✕</button>
+    </div>
+    <div id="player-drawer-1-content"></div>
+  </aside>
+
+  <!-- 4. SAMMENKLAPPELIG HØJRE SKUFFE: FELT- & SKØDEKORT-INSPEKTØR -->
+  <aside id="inspector-drawer" class="drawer-right fixed top-36 md:top-20 right-3 z-40 w-80 max-w-[90vw] max-h-[calc(100vh-10.5rem)] overflow-y-auto rounded-3xl bg-white/95 backdrop-blur-lg border-2 border-red-700 p-4 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
+      <span class="text-xs font-extrabold uppercase tracking-wider text-red-800">🃏 Skødekort & Felt</span>
+      <button onclick="closeInspectorDrawer()" class="w-7 h-7 rounded-full bg-stone-200 hover:bg-stone-300 text-slate-700 font-bold text-xs flex items-center justify-center">✕</button>
+    </div>
+    <div id="inspector-content" class="text-xs text-slate-700">
+      <p class="text-slate-400 py-4 text-center">Klik på et felt på 3D-banen for at se skødekort og bygge huse.</p>
+    </div>
+  </aside>
+
+  <!-- 5. SAMMENKLAPPELIG LOG-PANEL I VENSTRE SIDE -->
+  <aside id="log-drawer" class="drawer-left fixed top-36 left-3 z-30 w-80 max-w-[90vw] max-h-[calc(100vh-14.5rem)] flex flex-col rounded-3xl bg-white/95 backdrop-blur-lg border-2 border-stone-400 p-4 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
+      <span class="text-xs font-extrabold uppercase tracking-wider text-red-800">📜 Slagets Gang (Log)</span>
+      <button onclick="toggleLogDrawer(false)" class="w-7 h-7 rounded-full bg-stone-200 hover:bg-stone-300 text-slate-700 font-bold text-xs flex items-center justify-center">✕</button>
+    </div>
+    <div id="game-log" class="flex-1 overflow-y-auto space-y-1.5 text-xs text-slate-700 pr-1 max-h-80">
+      <div class="text-slate-500 italic">Klik rundt på 3D-banen, træk for at dreje kameraet, og kast 3D-terningerne!</div>
+    </div>
+  </aside>
+
+  <!-- 6. SLANK BUND-DOCK TIL TERNINGEKAST & TUR-KONTROL -->
+  <footer class="fixed bottom-3 left-1/2 -translate-x-1/2 z-20 w-[95%] max-w-xl pointer-events-none">
+    <div class="pointer-events-auto rounded-3xl bg-stone-950/90 backdrop-blur-md border-2 border-red-700/90 px-4 py-2.5 shadow-2xl flex items-center justify-between gap-3">
+      <!-- Aktiv spiller & terningeresultat -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div id="ui-active-avatar" class="w-10 h-10 shrink-0 rounded-2xl bg-sky-900/70 border-2 border-sky-400 flex items-center justify-center text-xl shadow">
+          🏎️
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span id="ui-active-player" class="font-display text-sm sm:text-base font-extrabold text-sky-400 truncate">Greve</span>
+            <span id="ui-dice-badge" class="px-2 py-0.5 rounded-full bg-stone-800 border border-amber-400/50 text-amber-300 text-[11px] font-extrabold">
+              🎲 <span id="ui-dice-values">Klar</span>
+            </span>
+          </div>
+          <p id="ui-turn-hint" class="text-[11px] text-stone-300 truncate">
+            Klik rundt på banen eller kast 3D-terningerne!
+          </p>
+        </div>
+      </div>
+
+      <!-- Handlingsknapper -->
+      <div class="shrink-0 flex items-center gap-2">
+        <button id="btn-roll" class="py-2.5 px-4 sm:px-5 rounded-2xl bg-red-700 hover:bg-red-600 text-white font-extrabold text-xs sm:text-sm tracking-wide shadow-lg border-2 border-amber-300 transition transform active:scale-95">
+          🎲 KAST TERNINGER
+        </button>
+
+        <div id="jail-controls" class="hidden flex items-center gap-1.5">
+          <button id="btn-pay-jail" class="py-2 px-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-bold text-xs border border-stone-600 transition">
+            💸 1.000 kr.
+          </button>
+          <button id="btn-roll-jail" class="py-2 px-3 rounded-xl bg-red-700 hover:bg-red-600 text-white font-bold text-xs border border-amber-300 transition">
+            🎲 To ens
+          </button>
+        </div>
+
+        <button id="btn-end-turn" class="hidden py-2.5 px-4 sm:px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm tracking-wide shadow-lg border border-emerald-300 transition transform active:scale-95">
+          Afslut tur ➡️
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- START SETUP MODAL -->
+  <div id="setup-modal" class="fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="max-w-xl w-full rounded-3xl bg-stone-100 border-4 border-red-700 p-6 sm:p-8 shadow-2xl text-slate-900">
+      <div class="text-center mb-5">
+        <div class="inline-block px-4 py-1 rounded-full bg-red-700 text-white text-xs font-extrabold uppercase tracking-widest mb-2">
+          3D Brætspil • Greve vs. Hillerød
+        </div>
+        <h2 class="font-display text-2xl sm:text-3xl font-black text-slate-900">
+          SLAGET OM SJÆLLAND 3D
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-600 mt-1">
+          Udforsk 3D-banen med S-tog, indkøbscenter, Frederiksborg Slot og færge – byg huse & slotte, og kast 3D-terningerne!
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <!-- Spiller 1: Greve -->
+        <div class="rounded-2xl bg-sky-50 border-2 border-sky-500/50 p-4">
+          <div class="text-xs font-extrabold text-sky-700 uppercase tracking-wider mb-1">Spiller 1 • Sydkysten</div>
+          <div class="text-sm font-bold text-slate-900 mb-2.5">🌊 Greve-fraktionen</div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Spillernavn</label>
+          <input id="input-p0-name" type="text" value="Greve" maxlength="16" class="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm font-semibold focus:outline-none focus:border-sky-600 mb-3" />
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Vælg 3D-spillebrik</label>
+          <div id="p0-avatar-picker" class="grid grid-cols-4 gap-1.5">
+            <button type="button" data-avatar="🏎️" data-model="sportscar" class="avatar-btn-0 p-2 rounded-lg bg-sky-200 border-2 border-sky-600 text-lg" title="Racerbil">🏎️</button>
+            <button type="button" data-avatar="⛵" data-model="sailboat" class="avatar-btn-0 p-2 rounded-lg bg-white border border-slate-300 text-lg" title="Sejlbåd">⛵</button>
+            <button type="button" data-avatar="🗼" data-model="lighthouse" class="avatar-btn-0 p-2 rounded-lg bg-white border border-slate-300 text-lg" title="Fyrtårn">🗼</button>
+            <button type="button" data-avatar="🦈" data-model="shark" class="avatar-btn-0 p-2 rounded-lg bg-white border border-slate-300 text-lg" title="Hajfinne">🦈</button>
+          </div>
+          <p class="text-[11px] text-sky-800 font-medium mt-2.5">✨ Hjemmebanefordel på Greve-felter</p>
+        </div>
+
+        <!-- Spiller 2: Hillerød -->
+        <div class="rounded-2xl bg-rose-50 border-2 border-rose-500/50 p-4">
+          <div class="text-xs font-extrabold text-rose-700 uppercase tracking-wider mb-1">Spiller 2 • Nordsjælland</div>
+          <div class="text-sm font-bold text-slate-900 mb-2.5">🏰 Hillerød-fraktionen</div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Spillernavn</label>
+          <input id="input-p1-name" type="text" value="Hillerød" maxlength="16" class="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm font-semibold focus:outline-none focus:border-rose-600 mb-3" />
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Vælg 3D-spillebrik</label>
+          <div id="p1-avatar-picker" class="grid grid-cols-4 gap-1.5">
+            <button type="button" data-avatar="🚙" data-model="suv" class="avatar-btn-1 p-2 rounded-lg bg-rose-200 border-2 border-rose-600 text-lg" title="Kongevogn">🚙</button>
+            <button type="button" data-avatar="🏰" data-model="castle" class="avatar-btn-1 p-2 rounded-lg bg-white border border-slate-300 text-lg" title="Borgtårn">🏰</button>
+            <button type="button" data-avatar="👑" data-model="crown" class="avatar-btn-1 p-2 rounded-lg bg-white border border-slate-300 text-lg" title="Kongekrone">👑</button>
+            <button type="button" data-avatar="⚔️" data-model="shield" class="avatar-btn-1 p-2 rounded-lg bg-white border border-slate-300 text-lg" title="Ridderskjold">⚔️</button>
+          </div>
+          <p class="text-[11px] text-rose-800 font-medium mt-2.5">✨ Hjemmebanefordel på Hillerød-felter</p>
+        </div>
+      </div>
+
+      <button id="btn-start-game" class="w-full py-3.5 rounded-2xl bg-red-700 hover:bg-red-600 text-white font-extrabold text-base tracking-wide shadow-lg border-2 border-amber-300 transition transform active:scale-[0.99]">
+        ⚔️ START SLAGET OM SJÆLLAND 3D (30.000 kr. hver)
+      </button>
+    </div>
+  </div>
+
+  <!-- HANDLINGS- / KØBS- / HUSLEJE- / SLAG-MODAL -->
+  <div id="action-modal" class="hidden fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div id="action-modal-box" class="max-w-md w-full rounded-3xl bg-white border-4 border-red-700 p-6 shadow-2xl text-center text-slate-900"></div>
+  </div>
+
+  <!-- SLAG-DUEL MODAL -->
+  <div id="battle-modal" class="hidden fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div id="battle-modal-box" class="max-w-lg w-full rounded-3xl bg-stone-900 border-4 border-amber-400 p-6 shadow-2xl text-white"></div>
+  </div>
+
+  <!-- REGLER MODAL -->
+  <div id="rules-modal" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="max-w-2xl w-full max-h-[85vh] overflow-y-auto rounded-3xl bg-white border-4 border-red-700 p-6 shadow-2xl text-slate-800">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+        <h2 class="font-display text-xl font-extrabold text-red-800">📜 Spilleregler & 3D-Styring</h2>
+        <button id="btn-close-rules" class="px-3 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-sm">Luk ✕</button>
+      </div>
+      <div class="space-y-3 text-sm leading-relaxed">
+        <p><strong>1. Sådan navigerer du rundt på 3D-banen:</strong><br>
+        • <strong>Drej kameraet:</strong> Træk med venstre musetast eller én finger på skærmen.<br>
+        • <strong>Zoom ind og ud:</strong> Brug musehjulet, knapperne <strong>＋ / －</strong> øverst eller knib med to fingre.<br>
+        • <strong>Se kort & felter:</strong> Klik på <em>"Se kort"</em> under <strong>Greve</strong> (åbner i venstre side) eller <strong>Hillerød</strong> (åbner i højre side), eller klik direkte på felterne og 3D-kortbunkerne på pladen.</p>
+        <p><strong>2. Start & S-toget:</strong> Hver spiller starter med <span class="text-emerald-700 font-bold">30.000 kr.</span> Passerer eller lander du på START (felt 0), modtager du <span class="text-emerald-700 font-bold">4.000 kr.</span></p>
+        <p><strong>3. Skøder, 3D-Huse & 3D-Slotte:</strong> Saml alle grunde i samme farvegruppe for monopol (dobbelt grundleje) og byg op til <span class="text-amber-700 font-bold">3 huse</span> samt et <span class="text-red-700 font-bold">Slot / Badehotel</span>.</p>
+        <p><strong class="text-red-800">4. SLAG-MEKANIKKEN:</strong><br>
+        Lander du på modstanderens grund, kan du betale lejen – ELLER <strong>Erklære Slag om feltet</strong>. Forsvarer man en grund i sin egen hjemby (Greve eller Hillerød), får man hjemmebanefordel!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEJRSSKÆRM MODAL -->
+  <div id="victory-modal" class="hidden fixed inset-0 z-50 bg-stone-950/90 backdrop-blur-lg flex items-center justify-center p-4">
+    <div id="victory-modal-box" class="max-w-lg w-full rounded-3xl bg-white border-4 border-amber-400 p-8 shadow-2xl text-center text-slate-900"></div>
+  </div>
+
+<script>
+/**
+ * ============================================================================
+ * 1. BEGIVENHEDSKORT ("SLAGETS GANG" & "PRØV LYKKEN") - I DKK (kr.)
+ * ============================================================================
+ */
+const CUSTOM_EVENT_CARDS = [
+  { deck: "Slagets Gang", icon: "🚆", title: "Forsinkelse på Linje E", text: "S-toget på Linje E er forsinket ved Hellerup på grund af signalfejl! Ryk 3 felter tilbage.", action: "move_rel", steps: -3 },
+  { deck: "Slagets Gang", icon: "🍦", title: "Issalg ved Karlslunde Strand", text: "Du fanger den perfekte sommerdag ved Karlslunde Strand og sælger isvafler til badegæsterne. Modtag 2.500 kr.!", action: "money", amount: 2500 },
+  { deck: "Slagets Gang", icon: "🌀", title: "Rundkørsels-kaos i Hillerød", text: "Du farer vild i de uendelige rundkørsler ved Hillerød og bruger en formue på benzin. Betal 1.200 kr. til midterpuljen.", action: "money", amount: -1200 },
+  { deck: "Slagets Gang", icon: "👑", title: "Christian IV's Velsignelse", text: "Kong Christian IV er imponeret over din strategi ved Frederiksborg Slot. Modtag 3.000 kr. fra skatkammeret!", action: "money", amount: 3000 },
+  { deck: "Slagets Gang", icon: "🚗", title: "Myldretid på Køge Bugt Motorvejen", text: "Du sidder bomstille i kø ved Greve Nord i myldretiden! Spring din næste tur over.", action: "skip_turn" },
+  { deck: "Slagets Gang", icon: "📣", title: "Lokal Opbakning!", text: "Borgerne i din egen hjemby samler ind til krigskassen! Modtag 700 kr. for hver grund, du ejer i din hjemby.", action: "home_bonus", perProp: 700 },
+  { deck: "Slagets Gang", icon: "🏰", title: "Fremrykning mod Frederiksborg Slot", text: "Dine tropper marcherer direkte mod Frederiksborg Slot! Ryk frem til felt 31.", action: "move_to", targetIndex: 31 },
+  { deck: "Slagets Gang", icon: "🏖️", title: "Strandhugst ved Køge Bugt", text: "En hurtig landgangsoperation sender dig direkte til Køge Bugt Strandpark VIP! Ryk frem til felt 29.", action: "move_to", targetIndex: 29 },
+
+  { deck: "Prøv Lykken", icon: "🛍️", title: "Shoppingtur i SlotsArkaderne", text: "Du gik lidt for amok på udsalg i SlotsArkaderne i Hillerød. Betal 1.600 kr.", action: "money", amount: -1600 },
+  { deck: "Prøv Lykken", icon: "🎭", title: "Udsolgt Show i Portalen", text: "Dit gallashow i Portalen i Greve er totalt udsolgt! Modtag 2.200 kr. i billetindtægter.", action: "money", amount: 2200 },
+  { deck: "Prøv Lykken", icon: "🅿️", title: "P-vagt ved Stationen", text: "Du glemte at stille P-skiven ved stationen! Gå direkte i fængsel uden at passere START.", action: "jail" },
+  { deck: "Prøv Lykken", icon: "⛵", title: "Havnefest i Greve Marina", text: "Du vinder årets kapsejlads ud for Greve Marina! Modtag 2.000 kr. i præmie.", action: "money", amount: 2000 },
+  { deck: "Prøv Lykken", icon: "🌲", title: "Skovtur i Gribskov", text: "Du finder en glemt skattekiste under en gammel eg i Gribskov! Modtag 1.800 kr.", action: "money", amount: 1800 },
+  { deck: "Prøv Lykken", icon: "🧱", title: "Vedligehold af Huse & Slotte", text: "Efterårsstormen har rusket i dine bygninger. Betal 500 kr. pr. hus/slot du ejer.", action: "repair", perTower: 500 },
+  { deck: "Prøv Lykken", icon: "🚄", title: "Eksprestog til START", text: "Du hopper på det direkte S-tog! Ryk helt frem til START og inkasser 4.000 kr.", action: "move_to", targetIndex: 0 },
+  { deck: "Prøv Lykken", icon: "🍔", title: "Natmad på Torvet", text: "Du giver en omgang natmad til hele holdet efter en lang aften. Betal 1.000 kr.", action: "money", amount: -1000 }
+];
+
+/**
+ * ============================================================================
+ * 2. DE 32 CIRKULÆRE KILE-FELTER
+ * ============================================================================
+ */
+const BOARD_TILES = [
+  { id: 0,  type: "start",    name: "START",                  zone: "neutral", icon: "🏁", desc: "Modtag 4.000 kr. hver gang du passerer eller lander her." },
+  { id: 1,  type: "property", name: "Hundige Station",        zone: "greve",   group: "brown",     groupName: "Brun",     color: "#92400e", price: 1000, buildCost: 800,  rents: [120, 240, 600, 1400, 2600, 4200] },
+  { id: 2,  type: "event",    name: "Prøv Lykken",            zone: "neutral", icon: "🍀", desc: "Træk et 'Prøv Lykken'-kort!" },
+  { id: 3,  type: "property", name: "Hillerød Station",       zone: "hillerod",group: "brown",     groupName: "Brun",     color: "#92400e", price: 1200, buildCost: 800,  rents: [150, 300, 700, 1600, 3000, 4800] },
+
+  { id: 4,  type: "property", name: "Greve Midtby",           zone: "greve",   group: "lightblue", groupName: "Lyseblå",  color: "#0284c7", price: 1600, buildCost: 1000, rents: [200, 400, 950, 2100, 3800, 6000] },
+  { id: 5,  type: "property", name: "Mosede Fort",            zone: "greve",   group: "lightblue", groupName: "Lyseblå",  color: "#0284c7", price: 1800, buildCost: 1000, rents: [220, 440, 1050, 2300, 4100, 6400] },
+  { id: 6,  type: "tax",      name: "Byskat",                 zone: "neutral", icon: "💰", amount: 2000, desc: "Betal 2.000 kr. i lokal skat til midterpuljen." },
+  { id: 7,  type: "property", name: "Carlsbergvej",           zone: "hillerod",group: "lightblue", groupName: "Lyseblå",  color: "#0284c7", price: 2000, buildCost: 1000, rents: [250, 500, 1200, 2600, 4600, 7000] },
+
+  { id: 8,  type: "jail",     name: "Fængsel / P-bøde",       zone: "neutral", icon: "🅿️", desc: "På besøg er gratis. Fængslet? Slå to ens eller betal 1.000 kr." },
+  { id: 9,  type: "property", name: "Karlslunde Strand",      zone: "greve",   group: "pink",      groupName: "Pink",     color: "#db2777", price: 2400, buildCost: 1500, rents: [300, 600, 1400, 3100, 5500, 8400] },
+  { id: 10, type: "event",    name: "Slagets Gang",           zone: "neutral", icon: "⚔️", desc: "Træk et 'Slagets Gang'-kort!" },
+  { id: 11, type: "property", name: "Ullerød",                zone: "hillerod",group: "pink",      groupName: "Pink",     color: "#db2777", price: 2600, buildCost: 1500, rents: [330, 660, 1550, 3400, 5900, 9000] },
+
+  { id: 12, type: "property", name: "Nyhuse",                 zone: "hillerod",group: "pink",      groupName: "Pink",     color: "#db2777", price: 2800, buildCost: 1500, rents: [360, 720, 1700, 3700, 6400, 9600] },
+  { id: 13, type: "property", name: "Tune",                   zone: "greve",   group: "orange",    groupName: "Orange",   color: "#ea580c", price: 3200, buildCost: 2000, rents: [400, 800, 1900, 4200, 7200, 11000] },
+  { id: 14, type: "property", name: "Christian 4. Vej",       zone: "hillerod",group: "orange",    groupName: "Orange",   color: "#ea580c", price: 3400, buildCost: 2000, rents: [430, 860, 2050, 4500, 7700, 11600] },
+  { id: 15, type: "property", name: "Julemøllen",             zone: "hillerod",group: "orange",    groupName: "Orange",   color: "#ea580c", price: 3600, buildCost: 2000, rents: [460, 920, 2200, 4800, 8200, 12400] },
+
+  { id: 16, type: "parking",  name: "Sommerhus på Kysten",    zone: "neutral", icon: "🏖️", desc: "Gratis helle! Lander du her, vinder du hele bødepuljen i midten." },
+  { id: 17, type: "property", name: "Portalen",               zone: "greve",   group: "red",       groupName: "Rød",      color: "#dc2626", price: 4200, buildCost: 2500, rents: [520, 1040, 2500, 5400, 9200, 14000] },
+  { id: 18, type: "event",    name: "Prøv Lykken",            zone: "neutral", icon: "🍀", desc: "Træk et 'Prøv Lykken'-kort!" },
+  { id: 19, type: "property", name: "Posen",                  zone: "hillerod",group: "red",       groupName: "Rød",      color: "#dc2626", price: 4500, buildCost: 2500, rents: [560, 1120, 2700, 5800, 9800, 15000] },
+
+  { id: 20, type: "property", name: "Torvet i Hillerød",      zone: "hillerod",group: "red",       groupName: "Rød",      color: "#dc2626", price: 4800, buildCost: 2500, rents: [600, 1200, 2900, 6200, 10500, 16000] },
+  { id: 21, type: "property", name: "Greve Strand",           zone: "greve",   group: "yellow",    groupName: "Gul",      color: "#ca8a04", price: 5400, buildCost: 3000, rents: [680, 1360, 3300, 7000, 11800, 18000] },
+  { id: 22, type: "property", name: "Olsbækken",              zone: "greve",   group: "yellow",    groupName: "Gul",      color: "#ca8a04", price: 5700, buildCost: 3000, rents: [720, 1440, 3500, 7400, 12400, 19000] },
+  { id: 23, type: "property", name: "Gribskov",               zone: "hillerod",group: "yellow",    groupName: "Gul",      color: "#ca8a04", price: 6000, buildCost: 3000, rents: [760, 1520, 3700, 7800, 13200, 20000] },
+
+  { id: 24, type: "gotojail", name: "Gå i Fængsel",           zone: "neutral", icon: "🚨", desc: "Ryk direkte til Fængslet uden at inkassere START-penge!" },
+  { id: 25, type: "property", name: "Greve Marina",           zone: "greve",   group: "green",     groupName: "Grøn",     color: "#16a34a", price: 6800, buildCost: 3500, rents: [850, 1700, 4200, 8800, 14800, 22500] },
+  { id: 26, type: "property", name: "SlotsArkaderne",         zone: "hillerod",group: "green",     groupName: "Grøn",     color: "#16a34a", price: 7000, buildCost: 3500, rents: [900, 1800, 4400, 9200, 15400, 23500] },
+  { id: 27, type: "property", name: "Gågaden",                zone: "hillerod",group: "green",     groupName: "Grøn",     color: "#16a34a", price: 7200, buildCost: 3500, rents: [950, 1900, 4600, 9600, 16200, 24500] },
+
+  { id: 28, type: "event",    name: "Slagets Gang",           zone: "neutral", icon: "⚔️", desc: "Træk et 'Slagets Gang'-kort!" },
+  { id: 29, type: "property", name: "Køge Bugt VIP",          zone: "greve",   group: "darkblue",  groupName: "Mørkeblå", color: "#1d4ed8", price: 8000, buildCost: 4000, rents: [1100, 2200, 5400, 11200, 18800, 28000] },
+  { id: 30, type: "property", name: "Barokhaven",             zone: "hillerod",group: "darkblue",  groupName: "Mørkeblå", color: "#1d4ed8", price: 8000, buildCost: 4000, rents: [1150, 2300, 5600, 11600, 19400, 29000] },
+  { id: 31, type: "property", name: "Frederiksborg Slot",     zone: "hillerod",group: "darkblue",  groupName: "Mørkeblå", color: "#1d4ed8", price: 8500, buildCost: 4000, rents: [1300, 2600, 6200, 12800, 21500, 32000] }
+];
+
+/**
+ * ============================================================================
+ * 3. WEB AUDIO API LYD-SYNTHESIZER
+ * ============================================================================
+ */
+class SoundFX {
+  constructor() {
+    this.muted = false;
+    this.ctx = null;
+  }
+
+  init() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) this.ctx = new AudioCtx();
+    }
+    if (this.ctx && this.ctx.state === "suspended") {
+      this.ctx.resume();
+    }
+  }
+
+  playTone(freq, type = "sine", duration = 0.15, vol = 0.12, delay = 0) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + delay);
+
+    gain.gain.setValueAtTime(vol, this.ctx.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + delay + duration);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(this.ctx.currentTime + delay);
+    osc.stop(this.ctx.currentTime + delay + duration);
+  }
+
+  diceBounce(intensity = 1) {
+    this.playTone(180 + Math.random() * 140, "triangle", 0.05, 0.08 * intensity, 0);
+  }
+
+  hop(stepIndex = 0) {
+    const pitch = 380 + (stepIndex % 8) * 28;
+    this.playTone(pitch, "sine", 0.11, 0.1, 0);
+  }
+
+  coin() {
+    this.playTone(987.77, "sine", 0.12, 0.12, 0);
+    this.playTone(1318.51, "sine", 0.25, 0.12, 0.09);
+  }
+
+  pay() {
+    this.playTone(320, "sawtooth", 0.15, 0.08, 0);
+    this.playTone(240, "sawtooth", 0.25, 0.08, 0.12);
+  }
+
+  cannon() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(160, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(35, this.ctx.currentTime + 0.35);
+    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.35);
+  }
+
+  battleWin() {
+    [523.25, 659.25, 783.99, 1046.50].forEach((n, idx) => this.playTone(n, "triangle", 0.2, 0.14, idx * 0.1));
+  }
+
+  battleLose() {
+    [392.00, 349.23, 311.13, 261.63].forEach((n, idx) => this.playTone(n, "sawtooth", 0.22, 0.1, idx * 0.12));
+  }
+
+  victoryFanfare() {
+    const melody = [523.25, 523.25, 523.25, 659.25, 783.99, 659.25, 1046.50];
+    const times  = [0, 0.15, 0.3, 0.45, 0.7, 0.95, 1.2];
+    melody.forEach((n, i) => this.playTone(n, "triangle", 0.35, 0.16, times[i]));
+  }
+}
+
+const sfx = new SoundFX();
+
+/**
+ * ============================================================================
+ * 4. SPIL-TILSTAND & SAMMENKLAPPELIGE SKUFFER
+ * ============================================================================
+ */
+const state = {
+  players: [
+    {
+      id: 0,
+      name: "Greve",
+      faction: "greve",
+      factionLabel: "Greve (Sydkysten)",
+      avatar: "🏎️",
+      modelType: "sportscar",
+      money: 30000,
+      pos: 0,
+      inJail: false,
+      jailTurns: 0,
+      skipNextTurn: false,
+      battlesWon: 0,
+      battlesLost: 0
+    },
+    {
+      id: 1,
+      name: "Hillerød",
+      faction: "hillerod",
+      factionLabel: "Hillerød (Nordsjælland)",
+      avatar: "🚙",
+      modelType: "suv",
+      money: 30000,
+      pos: 0,
+      inJail: false,
+      jailTurns: 0,
+      skipNextTurn: false,
+      battlesWon: 0,
+      battlesLost: 0
+    }
+  ],
+  ownership: {},
+  currentPlayer: 0,
+  turnCount: 1,
+  doublesCount: 0,
+  battleUsedThisTurn: false,
+  hasRolled: false,
+  isAnimating: false,
+  freeParkingPot: 2000,
+  selectedTileId: null,
+  gameOver: false,
+  speedMultiplier: 1
+};
+
+function getStepDuration() {
+  return Math.round(480 / state.speedMultiplier);
+}
+
+function formatDKK(amount) {
+  return amount.toLocaleString("da-DK") + " kr.";
+}
+
+function logEvent(msg, highlightClass = "text-slate-700") {
+  const logEl = document.getElementById("game-log");
+  const entry = document.createElement("div");
+  entry.className = `border-l-2 border-red-700/50 pl-2 py-0.5 ${highlightClass}`;
+  entry.innerHTML = msg;
+  logEl.prepend(entry);
+}
+
+// Hver spiller har sin egen kortskuffe i sin egen side (0 = venstre, 1 = højre)
+function togglePlayerDrawer(playerId) {
+  const drawer = document.getElementById(`player-drawer-${playerId}`);
+  const label = document.getElementById(`p${playerId}-drawer-label`);
+  const isOpen = drawer.classList.contains("open");
+
+  if (playerId === 0) {
+    document.getElementById("log-drawer").classList.remove("open");
+  } else {
+    closeInspectorDrawer();
+  }
+
+  if (isOpen) {
+    drawer.classList.remove("open");
+    if (label) label.textContent = "Se kort ▾";
+  } else {
+    renderPlayerDrawer(playerId);
+    drawer.classList.add("open");
+    if (label) label.textContent = "Luk kort ▴";
+  }
+}
+
+function closePlayerDrawer(playerId = null) {
+  const ids = playerId === null ? [0, 1] : [playerId];
+  ids.forEach(id => {
+    const drawer = document.getElementById(`player-drawer-${id}`);
+    const label = document.getElementById(`p${id}-drawer-label`);
+    if (drawer) drawer.classList.remove("open");
+    if (label) label.textContent = "Se kort ▾";
+  });
+}
+
+function closeInspectorDrawer() {
+  document.getElementById("inspector-drawer").classList.remove("open");
+}
+
+function toggleLogDrawer(forceState = null) {
+  const logDrawer = document.getElementById("log-drawer");
+  closePlayerDrawer(0);
+  if (forceState === true) logDrawer.classList.add("open");
+  else if (forceState === false) logDrawer.classList.remove("open");
+  else logDrawer.classList.toggle("open");
+}
+
+/**
+ * ============================================================================
+ * 5. THREE.JS 3D-SCENE: HØJKONTRAST SPILLEPLADE, S-TOG, CENTER, SLOT & TERNINGER
+ * ============================================================================
+ */
+const BOARD_3D = {
+  squareSize: 23.6,
+  outerRadius: 10.0,
+  colorBandRadius: 9.35,
+  innerWedgeRadius: 6.45,
+  lakeOuterRadius: 6.3,
+  centerIslandRadius: 4.85,
+  boardHeight: 0.36,
+  totalTiles: 32,
+  angleStep: (Math.PI * 2) / 32,
+  startAngleOffset: (135 * Math.PI) / 180
+};
+
+const threeState = {
+  scene: null,
+  camera: null,
+  renderer: null,
+  boardGroup: null,
+  wedgeHitMeshes: [],
+  interactiveProps: [],
+  selectionRing: null,
+  hoverRing: null,
+  housesGroup: null,
+  ferryMesh: null,
+  ferryAngle: 0.6,
+  trainCars: [],
+  trainAngle: 2.35,
+  windmillRotors: [],
+  lighthouseBeam: null,
+  pawnMeshes: [null, null],
+  pawnVisualState: [
+    { startX: 0, startZ: 0, targetX: 0, targetZ: 0, hopProgress: 1, hopDuration: 0.48 },
+    { startX: 0, startZ: 0, targetX: 0, targetZ: 0, hopProgress: 1, hopDuration: 0.48 }
+  ],
+  dice: [null, null],
+  diceAnim: {
+    active: false,
+    elapsed: 0,
+    duration: 1.15,
+    lastBounceSound: 0,
+    onComplete: null,
+    states: [
+      { startPos: new THREE.Vector3(), endPos: new THREE.Vector3(), targetRot: new THREE.Euler(), totalSpin: 0, targetYaw: 0 },
+      { startPos: new THREE.Vector3(), endPos: new THREE.Vector3(), targetRot: new THREE.Euler(), totalSpin: 0, targetYaw: 0 }
+    ]
+  },
+  camOrbit: {
+    theta: 0.0,
+    phi: 0.66,
+    radius: 23.5,
+    isTopView: false,
+    isDragging: false,
+    prevX: 0,
+    prevY: 0,
+    dragDistance: 0,
+    pinchDist: 0
+  },
+  raycaster: new THREE.Raycaster(),
+  mouseNDC: new THREE.Vector2(),
+  clock: new THREE.Clock()
+};
+
+/**
+ * Tegner spillepladens højkontrast-tekstur (varm pergament, mørk ramme, jernbanespor,
+ * sø, emblem og mørkeblå fløjls-arena i midten så terninger og tekst er nemme at se)
+ */
+function createSquareBoardTexture() {
+  const size = 2048;
+  const cx = size / 2;
+  const cy = size / 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  // 1. Dyb skifer- og messing-bordplade i stedet for udvasket hvid
+  const bgGrad = ctx.createRadialGradient(cx, cy, 240, cx, cy, size * 0.72);
+  bgGrad.addColorStop(0, "#334155");
+  bgGrad.addColorStop(0.65, "#1e293b");
+  bgGrad.addColorStop(1, "#0f172a");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, size, size);
+
+  // Gylden dobbeltramme langs kanten af pladen
+  ctx.strokeStyle = "#d97706";
+  ctx.lineWidth = 14;
+  ctx.strokeRect(24, 24, size - 48, size - 48);
+  ctx.strokeStyle = "rgba(251, 191, 36, 0.35)";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(44, 44, size - 88, size - 88);
+
+  // Subtile brætspils-foldelinjer
+  ctx.strokeStyle = "rgba(15, 23, 42, 0.45)";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(cx, 0); ctx.lineTo(cx, size);
+  ctx.moveTo(0, cy); ctx.lineTo(size, cy);
+  ctx.stroke();
+
+  const scale = size / BOARD_3D.squareSize;
+  const rOuter = BOARD_3D.outerRadius * scale;
+  const rBand = BOARD_3D.colorBandRadius * scale;
+  const rInner = BOARD_3D.innerWedgeRadius * scale;
+
+  // 2. Cirkulær jernbaneskinne rundt om hele yderkanten af banen (til 3D S-toget!)
+  const rTrack = (BOARD_3D.outerRadius + 0.48) * scale;
+  ctx.beginPath();
+  ctx.arc(cx, cy, rTrack, 0, Math.PI * 2);
+  ctx.strokeStyle = "#475569";
+  ctx.lineWidth = 34;
+  ctx.stroke();
+
+  // Sveller på jernbanen
+  for (let s = 0; s < 140; s++) {
+    const ang = (s / 140) * Math.PI * 2;
+    ctx.save();
+    ctx.translate(cx + rTrack * Math.cos(ang), cy + rTrack * Math.sin(ang));
+    ctx.rotate(ang);
+    ctx.fillStyle = "#78350f";
+    ctx.fillRect(-16, -4, 32, 8);
+    ctx.restore();
+  }
+  // To blanke stålskinner
+  [-10, 10].forEach(offset => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, rTrack + offset, 0, Math.PI * 2);
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+  });
+
+  // 3. Tegn de 32 kile-felter i varmt pergament med tydelig mørk typografi
+  BOARD_TILES.forEach((tile, i) => {
+    const startRad = BOARD_3D.startAngleOffset + i * BOARD_3D.angleStep;
+    const endRad = startRad + BOARD_3D.angleStep;
+    const midRad = startRad + BOARD_3D.angleStep / 2;
+
+    let bgFill = "#f3efe6";
+    let textColor = "#0f172a";
+    if (tile.type === "start") {
+      bgFill = "#991b1b";
+      textColor = "#ffffff";
+    } else if (tile.type === "event") {
+      bgFill = "#b91c1c";
+      textColor = "#fef08a";
+    } else if (tile.type === "jail" || tile.type === "gotojail") {
+      bgFill = "#d6d3d1";
+    } else if (tile.type === "parking") {
+      bgFill = "#fde68a";
+    }
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, rOuter, startRad, endRad);
+    ctx.arc(cx, cy, rInner, endRad, startRad, true);
+    ctx.closePath();
+    ctx.fillStyle = bgFill;
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#57534e";
+    ctx.stroke();
+
+    // Farvebjælke yderst for grunde
+    if (tile.type === "property") {
+      ctx.beginPath();
+      ctx.arc(cx, cy, rOuter, startRad, endRad);
+      ctx.arc(cx, cy, rBand, endRad, startRad, true);
+      ctx.closePath();
+      ctx.fillStyle = tile.color;
+      ctx.fill();
+      ctx.lineWidth = 2.2;
+      ctx.strokeStyle = "#292524";
+      ctx.stroke();
+    }
+
+    // Feltnummer langs søbredden
+    const numR = rInner + 26;
+    const nx = cx + numR * Math.cos(midRad);
+    const ny = cy + numR * Math.sin(midRad);
+    ctx.save();
+    ctx.translate(nx, ny);
+    ctx.fillStyle = (tile.type === "start" || tile.type === "event") ? "#fde047" : "#334155";
+    ctx.font = "800 18px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(tile.id), 0, 0);
+    ctx.restore();
+
+    // Zone-prik (Greve = blå, Hillerød = rosa)
+    if (tile.zone === "greve" || tile.zone === "hillerod") {
+      const dotR = rInner + 52;
+      const dx = cx + dotR * Math.cos(midRad);
+      const dy = cy + dotR * Math.sin(midRad);
+      ctx.beginPath();
+      ctx.arc(dx, dy, 8, 0, Math.PI * 2);
+      ctx.fillStyle = tile.zone === "greve" ? "#0284c7" : "#e11d48";
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+    }
+
+    // Tekst / pris / ikon i kilen
+    const textR = tile.type === "property" ? rInner + 148 : rInner + 158;
+    const tx = cx + textR * Math.cos(midRad);
+    const ty = cy + textR * Math.sin(midRad);
+
+    let rot = midRad + Math.PI / 2;
+    const norm = ((midRad % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    if (norm > 0 && norm < Math.PI) {
+      rot = midRad - Math.PI / 2;
+    }
+
+    ctx.save();
+    ctx.translate(tx, ty);
+    ctx.rotate(rot);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    if (tile.type === "property") {
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "800 18px Inter, sans-serif";
+      ctx.fillText(`${tile.price.toLocaleString("da-DK")} kr.`, 0, -25);
+
+      const words = tile.name.split(" ");
+      const line1 = words[0];
+      const line2 = words.slice(1).join(" ");
+
+      ctx.fillStyle = "#1e293b";
+      ctx.font = "800 19px Inter, sans-serif";
+      ctx.fillText(line1, 0, line2 ? 2 : 9);
+
+      if (line2) {
+        ctx.fillStyle = "#334155";
+        ctx.font = "700 16.5px Inter, sans-serif";
+        ctx.fillText(line2, 0, 24);
+      }
+    } else {
+      ctx.font = "34px Inter, sans-serif";
+      ctx.fillText(tile.icon, 0, -13);
+
+      ctx.fillStyle = textColor;
+      ctx.font = "800 18px Inter, sans-serif";
+      const shortName = tile.name.length > 13 ? tile.name.slice(0, 12) + "." : tile.name;
+      ctx.fillText(shortName, 0, 22);
+    }
+    ctx.restore();
+  });
+
+  // 4. Grøn kystlinje + Blå sø-ring
+  const rGrass = BOARD_3D.lakeOuterRadius * scale;
+  const rLake = (BOARD_3D.lakeOuterRadius - 0.28) * scale;
+  const rIsland = BOARD_3D.centerIslandRadius * scale;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, rGrass, 0, Math.PI * 2);
+  ctx.fillStyle = "#22c55e";
+  ctx.fill();
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = "#14532d";
+  ctx.stroke();
+
+  const lakeGrad = ctx.createRadialGradient(cx, cy, rIsland, cx, cy, rLake);
+  lakeGrad.addColorStop(0, "#38bdf8");
+  lakeGrad.addColorStop(0.55, "#0284c7");
+  lakeGrad.addColorStop(1, "#0369a1");
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, rLake, 0, Math.PI * 2);
+  ctx.fillStyle = lakeGrad;
+  ctx.fill();
+
+  // Træbroer over søen
+  ctx.fillStyle = "#92400e";
+  ctx.strokeStyle = "#fef3c7";
+  ctx.lineWidth = 2.5;
+  [0, Math.PI / 2, Math.PI, -Math.PI / 2].forEach(ang => {
+    ctx.save();
+    ctx.translate(cx + (rLake - 14) * Math.cos(ang), cy + (rLake - 14) * Math.sin(ang));
+    ctx.rotate(ang);
+    ctx.fillRect(-18, -14, 36, 28);
+    ctx.strokeRect(-18, -14, 36, 28);
+    ctx.restore();
+  });
+
+  // 5. Midter-ø i varm sand/stenfarve med mørk kontrast
+  ctx.beginPath();
+  ctx.arc(cx, cy, rIsland, 0, Math.PI * 2);
+  ctx.fillStyle = "#e7e5e4";
+  ctx.fill();
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = "#15803d";
+  ctx.stroke();
+
+  // Det røde "SLAGET OM SJÆLLAND"-emblem i centrum
+  ctx.save();
+  ctx.translate(cx, cy - 115);
+  ctx.beginPath();
+  ctx.arc(0, 0, 122, 0, Math.PI * 2);
+  ctx.fillStyle = "#991b1b";
+  ctx.fill();
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "#fbbf24";
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, 68, 0, Math.PI * 2);
+  ctx.fillStyle = "#fef3c7";
+  ctx.fill();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 20px Cinzel, serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("SLAGET OM", 0, -90);
+  ctx.fillText("SJÆLLAND", 0, 90);
+  ctx.restore();
+
+  // Mørkeblå fløjls-arena med guldkant til de hvide 3D-terninger (så de står knivskarpt!)
+  ctx.beginPath();
+  ctx.arc(cx, cy + 135, 162, 0, Math.PI * 2);
+  ctx.fillStyle = "#1e293b";
+  ctx.fill();
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = "#fbbf24";
+  ctx.stroke();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.anisotropy = 8;
+  return tex;
+}
+
+function createDeckCardTexture(title, subtitle, bgColor, accentColor) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 340;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, 512, 340);
+
+  ctx.strokeStyle = accentColor;
+  ctx.lineWidth = 14;
+  ctx.strokeRect(14, 14, 484, 312);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 32px Cinzel, serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(title, 256, 135);
+
+  ctx.fillStyle = accentColor;
+  ctx.font = "700 22px Inter, sans-serif";
+  ctx.fillText(subtitle, 256, 195);
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+function createTableSurfaceTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext("2d");
+
+  const grad = ctx.createRadialGradient(512, 512, 80, 512, 512, 700);
+  grad.addColorStop(0, "#292524");
+  grad.addColorStop(0.65, "#1c1917");
+  grad.addColorStop(1, "#0c0a09");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  for (let i = 0; i < 6000; i++) {
+    ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.04)";
+    ctx.fillRect(Math.random() * 1024, Math.random() * 1024, 2, 2);
+  }
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+function createDieFaceTexture(dots) {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#fafaf9";
+  ctx.fillRect(0, 0, size, size);
+
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 14;
+  ctx.strokeRect(7, 7, size - 14, size - 14);
+
+  const pipPositions = {
+    1: [[0.5, 0.5]],
+    2: [[0.28, 0.28], [0.72, 0.72]],
+    3: [[0.26, 0.26], [0.5, 0.5], [0.74, 0.74]],
+    4: [[0.28, 0.28], [0.72, 0.28], [0.28, 0.72], [0.72, 0.72]],
+    5: [[0.28, 0.28], [0.72, 0.28], [0.5, 0.5], [0.28, 0.72], [0.72, 0.72]],
+    6: [[0.28, 0.24], [0.72, 0.24], [0.28, 0.5], [0.72, 0.5], [0.28, 0.76], [0.72, 0.76]]
+  };
+
+  ctx.fillStyle = dots === 1 ? "#dc2626" : "#0f172a";
+  const radius = dots === 1 ? 28 : 22;
+
+  (pipPositions[dots] || []).forEach(([px, py]) => {
+    ctx.beginPath();
+    ctx.arc(px * size, py * size, radius, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.anisotropy = 4;
+  return tex;
+}
+
+function create3DDie() {
+  const materials = [
+    new THREE.MeshStandardMaterial({ map: createDieFaceTexture(3), roughness: 0.25, metalness: 0.05 }),
+    new THREE.MeshStandardMaterial({ map: createDieFaceTexture(4), roughness: 0.25, metalness: 0.05 }),
+    new THREE.MeshStandardMaterial({ map: createDieFaceTexture(1), roughness: 0.25, metalness: 0.05 }),
+    new THREE.MeshStandardMaterial({ map: createDieFaceTexture(6), roughness: 0.25, metalness: 0.05 }),
+    new THREE.MeshStandardMaterial({ map: createDieFaceTexture(2), roughness: 0.25, metalness: 0.05 }),
+    new THREE.MeshStandardMaterial({ map: createDieFaceTexture(5), roughness: 0.25, metalness: 0.05 })
+  ];
+
+  const geo = new THREE.BoxGeometry(0.92, 0.92, 0.92);
+  const mesh = new THREE.Mesh(geo, materials);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+
+  const wrapper = new THREE.Group();
+  wrapper.add(mesh);
+  wrapper.userData.innerDie = mesh;
+  return wrapper;
+}
+
+function getEulerForDieValue(val) {
+  switch (val) {
+    case 1: return new THREE.Euler(0, 0, 0);
+    case 6: return new THREE.Euler(Math.PI, 0, 0);
+    case 2: return new THREE.Euler(-Math.PI / 2, 0, 0);
+    case 5: return new THREE.Euler(Math.PI / 2, 0, 0);
+    case 3: return new THREE.Euler(0, 0, Math.PI / 2);
+    case 4: return new THREE.Euler(0, 0, -Math.PI / 2);
+    default: return new THREE.Euler(0, 0, 0);
+  }
+}
+
+/**
+ * Bygger sej 3D-spillerbrik
+ */
+function create3DPawn(playerId, modelType) {
+  const group = new THREE.Group();
+  const teamColor = playerId === 0 ? 0x0284c7 : 0xe11d48;
+
+  const baseGeo = new THREE.CylinderGeometry(0.46, 0.52, 0.14, 24);
+  const baseMat = new THREE.MeshStandardMaterial({ color: teamColor, roughness: 0.3, metalness: 0.3 });
+  const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+  baseMesh.position.y = 0.07;
+  baseMesh.castShadow = true;
+  baseMesh.receiveShadow = true;
+  group.add(baseMesh);
+
+  const ringGeo = new THREE.TorusGeometry(0.47, 0.035, 10, 28);
+  ringGeo.rotateX(Math.PI / 2);
+  const ringMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, metalness: 0.6, roughness: 0.25 });
+  const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+  ringMesh.position.y = 0.14;
+  group.add(ringMesh);
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25, metalness: 0.1 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.7, roughness: 0.25 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 });
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, metalness: 0.8 });
+
+  if (modelType === "sportscar" || modelType === "suv") {
+    const carBody = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.22, 0.82), baseMat);
+    carBody.position.y = 0.26;
+    carBody.castShadow = true;
+    group.add(carBody);
+
+    const cabinLen = modelType === "suv" ? 0.52 : 0.38;
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.19, cabinLen), glassMat);
+    cabin.position.set(0, 0.44, modelType === "suv" ? -0.04 : -0.06);
+    cabin.castShadow = true;
+    group.add(cabin);
+
+    const wheelGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.08, 12);
+    wheelGeo.rotateZ(Math.PI / 2);
+    [[-0.24, 0.24], [0.24, 0.24], [-0.24, -0.24], [0.24, -0.24]].forEach(([wx, wz]) => {
+      const wheel = new THREE.Mesh(wheelGeo, darkMat);
+      wheel.position.set(wx, 0.18, wz);
+      group.add(wheel);
+    });
+  } else if (modelType === "sailboat") {
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 0.72), baseMat);
+    hull.position.y = 0.24;
+    hull.castShadow = true;
+    group.add(hull);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.85, 10), darkMat);
+    mast.position.y = 0.7;
+    group.add(mast);
+    const sail = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.68, 3), bodyMat);
+    sail.position.set(0, 0.72, 0.04);
+    sail.castShadow = true;
+    group.add(sail);
+  } else if (modelType === "lighthouse") {
+    const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 0.75, 16), bodyMat);
+    tower.position.y = 0.52;
+    tower.castShadow = true;
+    group.add(tower);
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, 0.22, 16), baseMat);
+    stripe.position.y = 0.48;
+    group.add(stripe);
+    const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 12), goldMat);
+    lantern.position.y = 0.96;
+    group.add(lantern);
+  } else if (modelType === "shark") {
+    const finGeo = new THREE.ConeGeometry(0.28, 0.75, 4);
+    finGeo.scale(0.45, 1, 1.3);
+    const fin = new THREE.Mesh(finGeo, baseMat);
+    fin.position.y = 0.5;
+    fin.rotation.x = -0.22;
+    fin.castShadow = true;
+    group.add(fin);
+  } else if (modelType === "castle") {
+    const keep = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.72, 16), bodyMat);
+    keep.position.y = 0.5;
+    keep.castShadow = true;
+    group.add(keep);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(0.33, 0.42, 16), baseMat);
+    roof.position.y = 1.05;
+    roof.castShadow = true;
+    group.add(roof);
+    const spire = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 10), goldMat);
+    spire.position.y = 1.28;
+    group.add(spire);
+  } else if (modelType === "crown") {
+    const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.25, 0.36, 12), goldMat);
+    crownBase.position.y = 0.34;
+    crownBase.castShadow = true;
+    group.add(crownBase);
+    for (let s = 0; s < 5; s++) {
+      const ang = (s / 5) * Math.PI * 2;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.26, 8), goldMat);
+      spike.position.set(Math.cos(ang) * 0.24, 0.62, Math.sin(ang) * 0.24);
+      group.add(spike);
+    }
+  } else {
+    const shield = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.1, 16), baseMat);
+    shield.rotation.x = Math.PI / 2;
+    shield.position.y = 0.52;
+    shield.castShadow = true;
+    group.add(shield);
+    const boss = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), goldMat);
+    boss.position.set(0, 0.52, 0.06);
+    group.add(boss);
+  }
+
+  return group;
+}
+
+function create3DBuilding(isCastle) {
+  const group = new THREE.Group();
+
+  if (isCastle) {
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.35 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.55, roughness: 0.25 });
+
+    const mainHall = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.38, 0.38), wallMat);
+    mainHall.position.y = 0.19;
+    mainHall.castShadow = true;
+    group.add(mainHall);
+
+    const mainRoof = new THREE.Mesh(new THREE.ConeGeometry(0.36, 0.34, 4), roofMat);
+    mainRoof.rotation.y = Math.PI / 4;
+    mainRoof.position.y = 0.55;
+    mainRoof.castShadow = true;
+    group.add(mainRoof);
+
+    const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.54, 12), wallMat);
+    tower.position.set(0.3, 0.27, 0);
+    tower.castShadow = true;
+    group.add(tower);
+
+    const spire = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.28, 12), roofMat);
+    spire.position.set(0.3, 0.67, 0);
+    group.add(spire);
+  } else {
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x0d9488, roughness: 0.35 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x115e59, roughness: 0.4 });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.22, 0.22), wallMat);
+    body.position.y = 0.11;
+    body.castShadow = true;
+    group.add(body);
+
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(0.21, 0.18, 4), roofMat);
+    roof.rotation.y = Math.PI / 4;
+    roof.position.y = 0.3;
+    roof.castShadow = true;
+    group.add(roof);
+  }
+
+  return group;
+}
+
+/**
+ * Bygger 3D-landemærker: Kørende S-tog, Indkøbscenter ("Center"), Frederiksborg Slot,
+ * Fyrtårn med roterende lyskegle og vindmøller!
+ */
+function build3DLandmarks(boardGroup) {
+  const y0 = BOARD_3D.boardHeight;
+
+  // 1. KØRENDE 3D S-TOG (3 vogne i rød & hvid med lysende vinduer og forlygte)
+  threeState.trainCars = [];
+  const trainRed = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 });
+  const trainWhite = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
+  const windowGlow = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+  const darkRoof = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+
+  for (let c = 0; c < 3; c++) {
+    const car = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.26, 0.92), trainRed);
+    body.position.y = 0.16;
+    body.castShadow = true;
+    car.add(body);
+
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.06, 0.93), trainWhite);
+    stripe.position.y = 0.14;
+    car.add(stripe);
+
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.05, 0.88), darkRoof);
+    roof.position.y = 0.31;
+    car.add(roof);
+
+    // Lysende vinduer på begge sider
+    [-0.26, 0, 0.26].forEach(wz => {
+      const win = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.08, 0.16), windowGlow);
+      win.position.set(0, 0.21, wz);
+      car.add(win);
+    });
+
+    // Forlygte på forreste vogn
+    if (c === 0) {
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), windowGlow);
+      lamp.position.set(0, 0.16, 0.47);
+      car.add(lamp);
+    }
+
+    boardGroup.add(car);
+    threeState.trainCars.push(car);
+  }
+
+  // 2. STORT 3D INDKØBSCENTER ("CENTER") med glaskuppel, parkeringsplads & biler
+  const centerGroup = new THREE.Group();
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.45 });
+  const trimMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.35 });
+  const glassDomeMat = new THREE.MeshStandardMaterial({
+    color: 0x38bdf8,
+    roughness: 0.15,
+    metalness: 0.7,
+    transparent: true,
+    opacity: 0.82
+  });
+
+  const mainHall = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.56, 2.35), wallMat);
+  mainHall.position.y = 0.28;
+  mainHall.castShadow = true;
+  mainHall.receiveShadow = true;
+  centerGroup.add(mainHall);
+
+  const roofTrim = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.08, 2.45), trimMat);
+  roofTrim.position.y = 0.58;
+  centerGroup.add(roofTrim);
+
+  // Glaskuppel på taget
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), glassDomeMat);
+  dome.position.y = 0.6;
+  centerGroup.add(dome);
+
+  // "CENTER"-skilt på taget
+  const signCanvas = document.createElement("canvas");
+  signCanvas.width = 256;
+  signCanvas.height = 64;
+  const sCtx = signCanvas.getContext("2d");
+  sCtx.fillStyle = "#0f172a";
+  sCtx.fillRect(0, 0, 256, 64);
+  sCtx.strokeStyle = "#38bdf8";
+  sCtx.lineWidth = 6;
+  sCtx.strokeRect(3, 3, 250, 58);
+  sCtx.fillStyle = "#38bdf8";
+  sCtx.font = "900 32px Inter, sans-serif";
+  sCtx.textAlign = "center";
+  sCtx.textBaseline = "middle";
+  sCtx.fillText("CENTER", 128, 34);
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  const signMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 0.32, 1.3),
+    new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.3 })
+  );
+  signMesh.position.set(-0.75, 0.76, 0);
+  centerGroup.add(signMesh);
+
+  // Parkeringsplads foran centeret med 3 små biler
+  const lot = new THREE.Mesh(
+    new THREE.BoxGeometry(0.85, 0.03, 2.2),
+    new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 })
+  );
+  lot.position.set(-1.32, 0.015, 0);
+  centerGroup.add(lot);
+
+  [0xef4444, 0xfbbf24, 0x22c55e].forEach((cCol, idx) => {
+    const pCar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.32, 0.14, 0.18),
+      new THREE.MeshStandardMaterial({ color: cCol, roughness: 0.3 })
+    );
+    pCar.position.set(-1.32, 0.1, -0.65 + idx * 0.65);
+    pCar.castShadow = true;
+    centerGroup.add(pCar);
+  });
+
+  centerGroup.position.set(10.65, y0, 0);
+  boardGroup.add(centerGroup);
+
+  // 3. MINIATURE FREDERIKSBORG SLOT PÅ MIDTER-ØEN
+  const castleGroup = new THREE.Group();
+  const brickMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.5 });
+  const copperMat = new THREE.MeshStandardMaterial({ color: 0x0d9488, metalness: 0.45, roughness: 0.35 });
+  const goldTipMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.8, roughness: 0.2 });
+
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.42, 0.5), brickMat);
+  wing.position.y = 0.21;
+  wing.castShadow = true;
+  castleGroup.add(wing);
+
+  [-0.55, 0, 0.55].forEach((tx, idx) => {
+    const h = idx === 1 ? 0.78 : 0.58;
+    const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, h, 12), brickMat);
+    tower.position.set(tx, h / 2, 0.12);
+    tower.castShadow = true;
+    castleGroup.add(tower);
+
+    const spire = new THREE.Mesh(new THREE.ConeGeometry(0.18, idx === 1 ? 0.46 : 0.34, 12), copperMat);
+    spire.position.set(tx, h + (idx === 1 ? 0.23 : 0.17), 0.12);
+    castleGroup.add(spire);
+
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), goldTipMat);
+    tip.position.set(tx, h + (idx === 1 ? 0.47 : 0.35), 0.12);
+    castleGroup.add(tip);
+  });
+
+  castleGroup.position.set(0, y0, -3.55);
+  boardGroup.add(castleGroup);
+
+  // 4. FYRTÅRN VED SØEN MED ROTERENDE LYSKEGLE
+  const lhGroup = new THREE.Group();
+  const lhBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.24, 0.72, 14),
+    new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 })
+  );
+  lhBase.position.y = 0.36;
+  lhBase.castShadow = true;
+  lhGroup.add(lhBase);
+
+  const lhStripe = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.19, 0.21, 0.22, 14),
+    new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.35 })
+  );
+  lhStripe.position.y = 0.36;
+  lhGroup.add(lhStripe);
+
+  const lhTop = new THREE.Mesh(
+    new THREE.SphereGeometry(0.14, 12, 12),
+    new THREE.MeshBasicMaterial({ color: 0xfef08a })
+  );
+  lhTop.position.y = 0.78;
+  lhGroup.add(lhTop);
+
+  const beamGeo = new THREE.ConeGeometry(0.32, 1.8, 12, 1, true);
+  beamGeo.translate(0, -0.9, 0);
+  beamGeo.rotateX(Math.PI / 2);
+  const beamMat = new THREE.MeshBasicMaterial({
+    color: 0xfef08a,
+    transparent: true,
+    opacity: 0.22,
+    side: THREE.DoubleSide
+  });
+  const beamMesh = new THREE.Mesh(beamGeo, beamMat);
+  beamMesh.position.y = 0.78;
+  lhGroup.add(beamMesh);
+  threeState.lighthouseBeam = beamMesh;
+
+  lhGroup.position.set(-4.35, y0, 4.35);
+  boardGroup.add(lhGroup);
+
+  // 5. TO ROTERENDE VINDMØLLER VED KYSTEN
+  threeState.windmillRotors = [];
+  [[-10.4, 3.2], [-10.4, -3.2]].forEach(([wx, wz]) => {
+    const wm = new THREE.Group();
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.08, 1.15, 10),
+      new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 })
+    );
+    pole.position.y = 0.575;
+    pole.castShadow = true;
+    wm.add(pole);
+
+    const rotor = new THREE.Group();
+    rotor.position.set(0.06, 1.12, 0);
+    for (let b = 0; b < 3; b++) {
+      const blade = new THREE.Mesh(
+        new THREE.BoxGeometry(0.02, 0.52, 0.07),
+        new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 })
+      );
+      blade.position.y = 0.26;
+      const bladePivot = new THREE.Group();
+      bladePivot.rotation.x = (b * Math.PI * 2) / 3;
+      bladePivot.add(blade);
+      rotor.add(bladePivot);
+    }
+    wm.add(rotor);
+    wm.position.set(wx, y0, wz);
+    boardGroup.add(wm);
+    threeState.windmillRotors.push(rotor);
+  });
+}
+
+function get3DTileCoords(tileIndex, playerOffsetIndex = 0) {
+  const startRad = BOARD_3D.startAngleOffset + tileIndex * BOARD_3D.angleStep;
+  const angleOffset = playerOffsetIndex === 0 ? -0.042 : 0.042;
+  const midRad = startRad + BOARD_3D.angleStep / 2 + angleOffset;
+  const r = 7.95;
+  return {
+    x: r * Math.cos(midRad),
+    z: r * Math.sin(midRad)
+  };
+}
+
+/**
+ * Initialiserer hele 3D-scenen
+ */
+function init3DScene() {
+  const container = document.getElementById("three-container");
+  const width = container.clientWidth || window.innerWidth;
+  const height = container.clientHeight || window.innerHeight;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x141210);
+  scene.fog = new THREE.FogExp2(0x141210, 0.009);
+
+  const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 140);
+  threeState.camera = camera;
+  updateCameraPosition();
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+  renderer.setSize(width, height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  container.innerHTML = "";
+  container.appendChild(renderer.domElement);
+
+  threeState.scene = scene;
+  threeState.renderer = renderer;
+
+  // Belysning
+  scene.add(new THREE.AmbientLight(0xfffbeb, 0.72));
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 0.48));
+
+  const dirLight = new THREE.DirectionalLight(0xfff7ed, 0.98);
+  dirLight.position.set(11, 25, 13);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.width = 2048;
+  dirLight.shadow.mapSize.height = 2048;
+  dirLight.shadow.camera.near = 4;
+  dirLight.shadow.camera.far = 55;
+  const d = 17.5;
+  dirLight.shadow.camera.left = -d;
+  dirLight.shadow.camera.right = d;
+  dirLight.shadow.camera.top = d;
+  dirLight.shadow.camera.bottom = -d;
+  dirLight.shadow.bias = -0.0005;
+  scene.add(dirLight);
+
+  // 1. Stort designer-spillebord
+  const tableGeo = new THREE.PlaneGeometry(85, 85);
+  tableGeo.rotateX(-Math.PI / 2);
+  const tableMat = new THREE.MeshStandardMaterial({
+    map: createTableSurfaceTexture(),
+    roughness: 0.72,
+    metalness: 0.06
+  });
+  const tableMesh = new THREE.Mesh(tableGeo, tableMat);
+  tableMesh.position.y = -0.01;
+  tableMesh.receiveShadow = true;
+  scene.add(tableMesh);
+
+  // 2. Kvadratisk 3D-spilleplade
+  const boardGroup = new THREE.Group();
+  threeState.boardGroup = boardGroup;
+  scene.add(boardGroup);
+
+  const boardTex = createSquareBoardTexture();
+  const topMat = new THREE.MeshStandardMaterial({ map: boardTex, roughness: 0.5, metalness: 0.04 });
+  const edgeMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.45 });
+  const boardGeo = new THREE.BoxGeometry(BOARD_3D.squareSize, BOARD_3D.boardHeight, BOARD_3D.squareSize);
+  const boardMesh = new THREE.Mesh(boardGeo, [edgeMat, edgeMat, topMat, edgeMat, edgeMat, edgeMat]);
+  boardMesh.position.y = BOARD_3D.boardHeight / 2;
+  boardMesh.receiveShadow = true;
+  boardMesh.castShadow = true;
+  boardGroup.add(boardMesh);
+
+  // 3. 3D-Træer langs søbredden + Færge i søen
+  const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+  const treeCrownMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.6 });
+  for (let t = 0; t < 18; t++) {
+    const ang = (t / 18) * Math.PI * 2 + 0.15;
+    if (Math.abs(Math.sin(ang * 2)) < 0.25) continue;
+    const rTree = BOARD_3D.lakeOuterRadius - 0.12;
+    const tree = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.16, 6), treeTrunkMat);
+    trunk.position.y = 0.08;
+    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.32, 7), treeCrownMat);
+    crown.position.y = 0.28;
+    crown.castShadow = true;
+    tree.add(trunk, crown);
+    tree.position.set(rTree * Math.cos(ang), BOARD_3D.boardHeight, rTree * Math.sin(ang));
+    boardGroup.add(tree);
+  }
+
+  // Lille 3D-færge i søen
+  const ferry = new THREE.Group();
+  const ferryHull = new THREE.Mesh(
+    new THREE.BoxGeometry(0.32, 0.14, 0.62),
+    new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.35 })
+  );
+  ferryHull.position.y = 0.07;
+  ferryHull.castShadow = true;
+  const ferryCabin = new THREE.Mesh(
+    new THREE.BoxGeometry(0.24, 0.14, 0.32),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+  );
+  ferryCabin.position.y = 0.2;
+  ferry.add(ferryHull, ferryCabin);
+  boardGroup.add(ferry);
+  threeState.ferryMesh = ferry;
+
+  // 4. Byg S-tog, Indkøbscenter, Frederiksborg Slot, Fyrtårn & Vindmøller
+  build3DLandmarks(boardGroup);
+
+  // 5. Fysiske 3D-kortbunker i hjørnerne af pladen
+  threeState.interactiveProps = [];
+  const deckConfigs = [
+    { x: -9.3, z: -9.3, rot: 0.25, title: "SLAGETS GANG", sub: "Begivenhedskort", bg: "#b91c1c", acc: "#fcd34d", info: "Slagets Gang-bunken: Trækkes når du lander på de røde kampfelter på banen!" },
+    { x: 9.3,  z: -9.3, rot: -0.25, title: "PRØV LYKKEN", sub: "Skæbnekort", bg: "#d97706", acc: "#fef3c7", info: "Prøv Lykken-bunken: Kan give store gevinster, S-togs-rejser eller uventede regninger!" },
+    { x: -9.3, z: 9.3,  rot: -0.22, title: "GREVE SKØDER", sub: "Sydkysten", bg: "#0284c7", acc: "#bae6fd", playerId: 0 },
+    { x: 9.3,  z: 9.3,  rot: 0.22,  title: "HILLERØD SKØDER", sub: "Nordsjælland", bg: "#e11d48", acc: "#fecdd3", playerId: 1 }
+  ];
+
+  deckConfigs.forEach(dc => {
+    const tex = createDeckCardTexture(dc.title, dc.sub, dc.bg, dc.acc);
+    const side = new THREE.MeshStandardMaterial({ color: 0xf5f5f4, roughness: 0.6 });
+    const top = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4 });
+    const deckGeo = new THREE.BoxGeometry(2.5, 0.24, 1.7);
+    const deckMesh = new THREE.Mesh(deckGeo, [side, side, top, side, side, side]);
+    deckMesh.position.set(dc.x, BOARD_3D.boardHeight + 0.12, dc.z);
+    deckMesh.rotation.y = dc.rot;
+    deckMesh.castShadow = true;
+    deckMesh.receiveShadow = true;
+    deckMesh.userData.deckConfig = dc;
+    boardGroup.add(deckMesh);
+    threeState.interactiveProps.push(deckMesh);
+  });
+
+  // 6. Usynlige klik-kiler (til Raycasting ved hover & klik på felter)
+  threeState.wedgeHitMeshes = [];
+  BOARD_TILES.forEach((tile, i) => {
+    const startRad = BOARD_3D.startAngleOffset + i * BOARD_3D.angleStep;
+    const ringGeo = new THREE.RingGeometry(
+      BOARD_3D.innerWedgeRadius,
+      BOARD_3D.outerRadius,
+      4,
+      1,
+      -startRad - BOARD_3D.angleStep,
+      BOARD_3D.angleStep
+    );
+    ringGeo.rotateX(-Math.PI / 2);
+
+    const hitMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.0,
+      side: THREE.DoubleSide
+    });
+    const hitMesh = new THREE.Mesh(ringGeo, hitMat);
+    hitMesh.position.y = BOARD_3D.boardHeight + 0.012;
+    hitMesh.userData.tileId = tile.id;
+    boardGroup.add(hitMesh);
+    threeState.wedgeHitMeshes.push(hitMesh);
+  });
+
+  // Hover-highlight kile
+  const hoverGeo = new THREE.RingGeometry(
+    BOARD_3D.innerWedgeRadius,
+    BOARD_3D.outerRadius,
+    6,
+    1,
+    -BOARD_3D.startAngleOffset - BOARD_3D.angleStep,
+    BOARD_3D.angleStep
+  );
+  hoverGeo.rotateX(-Math.PI / 2);
+  const hoverMesh = new THREE.Mesh(
+    hoverGeo,
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.0, side: THREE.DoubleSide })
+  );
+  hoverMesh.position.y = BOARD_3D.boardHeight + 0.015;
+  boardGroup.add(hoverMesh);
+  threeState.hoverRing = hoverMesh;
+
+  // Valgt felt-markering (gylden glød)
+  const selGeo = hoverGeo.clone();
+  const selMesh = new THREE.Mesh(
+    selGeo,
+    new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.0, side: THREE.DoubleSide })
+  );
+  selMesh.position.y = BOARD_3D.boardHeight + 0.018;
+  boardGroup.add(selMesh);
+  threeState.selectionRing = selMesh;
+
+  // Gruppe til 3D-huse og 3D-slotte
+  const housesGroup = new THREE.Group();
+  boardGroup.add(housesGroup);
+  threeState.housesGroup = housesGroup;
+
+  // 7. De to 3D-terninger på den mørkeblå arena i midter-øen
+  const die1 = create3DDie();
+  const die2 = create3DDie();
+  die1.position.set(-0.9, BOARD_3D.boardHeight + 0.46, 1.5);
+  die2.position.set(0.9, BOARD_3D.boardHeight + 0.46, 1.3);
+  die1.rotation.y = 0.35;
+  die2.rotation.y = -0.45;
+  scene.add(die1);
+  scene.add(die2);
+  threeState.dice = [die1, die2];
+
+  // 8. Spillerbrikker & 3D-interaktion
+  rebuildPlayerPawns3D();
+  setup3DInteractions(renderer.domElement);
+}
+
+function rebuildPlayerPawns3D() {
+  if (!threeState.scene) return;
+  state.players.forEach((p, idx) => {
+    if (threeState.pawnMeshes[idx]) {
+      threeState.scene.remove(threeState.pawnMeshes[idx]);
+    }
+    const pawn = create3DPawn(idx, p.modelType);
+    const coords = get3DTileCoords(p.pos, idx);
+    pawn.position.set(coords.x, BOARD_3D.boardHeight, coords.z);
+    pawn.lookAt(0, BOARD_3D.boardHeight, 0);
+
+    threeState.scene.add(pawn);
+    threeState.pawnMeshes[idx] = pawn;
+    threeState.pawnVisualState[idx] = {
+      startX: coords.x,
+      startZ: coords.z,
+      targetX: coords.x,
+      targetZ: coords.z,
+      hopProgress: 1,
+      hopDuration: 0.45
+    };
+  });
+}
+
+function updateCameraPosition() {
+  const { theta, phi, radius } = threeState.camOrbit;
+  if (!threeState.camera) return;
+  const x = radius * Math.sin(phi) * Math.sin(theta);
+  const y = radius * Math.cos(phi);
+  const z = radius * Math.sin(phi) * Math.cos(theta);
+  threeState.camera.position.set(x, y, z);
+  threeState.camera.lookAt(0, 0.2, 0.3);
+}
+
+function setZoom(delta) {
+  threeState.camOrbit.radius = Math.max(13.5, Math.min(34.0, threeState.camOrbit.radius + delta));
+  updateCameraPosition();
+}
+
+function setup3DInteractions(domEl) {
+  const tooltip = document.getElementById("hover-tooltip");
+  const tooltipTitle = document.getElementById("tooltip-title");
+  const tooltipSub = document.getElementById("tooltip-sub");
+
+  const updateRayHover = (clientX, clientY) => {
+    if (threeState.camOrbit.isDragging) {
+      tooltip.classList.add("hidden");
+      return;
+    }
+    const rect = domEl.getBoundingClientRect();
+    threeState.mouseNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    threeState.mouseNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+    threeState.raycaster.setFromCamera(threeState.mouseNDC, threeState.camera);
+    const hits = threeState.raycaster.intersectObjects(threeState.wedgeHitMeshes);
+
+    if (hits.length > 0) {
+      const tileId = hits[0].object.userData.tileId;
+      const tile = BOARD_TILES[tileId];
+      domEl.style.cursor = "pointer";
+
+      const startRad = BOARD_3D.startAngleOffset + tileId * BOARD_3D.angleStep;
+      const geo = new THREE.RingGeometry(
+        BOARD_3D.innerWedgeRadius,
+        BOARD_3D.outerRadius,
+        6,
+        1,
+        -startRad - BOARD_3D.angleStep,
+        BOARD_3D.angleStep
+      );
+      geo.rotateX(-Math.PI / 2);
+      threeState.hoverRing.geometry.dispose();
+      threeState.hoverRing.geometry = geo;
+      threeState.hoverRing.material.opacity = 0.28;
+
+      const own = state.ownership[tile.id];
+      const subText = tile.type === "property"
+        ? (own !== undefined ? `Ejes af ${state.players[own.owner].name} • Leje: ${formatDKK(calculateRent(tile.id))}` : `Ledig grund • Pris: ${formatDKK(tile.price)}`)
+        : "Klik for at se detaljer";
+
+      tooltipTitle.textContent = `#${tile.id} ${tile.name}`;
+      tooltipSub.textContent = subText;
+      tooltip.style.left = `${Math.min(window.innerWidth - 210, clientX + 14)}px`;
+      tooltip.style.top = `${Math.max(12, clientY - 38)}px`;
+      tooltip.classList.remove("hidden");
+    } else {
+      domEl.style.cursor = "grab";
+      threeState.hoverRing.material.opacity = 0.0;
+      tooltip.classList.add("hidden");
+    }
+  };
+
+  const onPointerDown = (clientX, clientY) => {
+    threeState.camOrbit.isDragging = true;
+    threeState.camOrbit.prevX = clientX;
+    threeState.camOrbit.prevY = clientY;
+    threeState.camOrbit.dragDistance = 0;
+  };
+
+  const onPointerMove = (clientX, clientY) => {
+    if (!threeState.camOrbit.isDragging) {
+      updateRayHover(clientX, clientY);
+      return;
+    }
+    const dx = clientX - threeState.camOrbit.prevX;
+    const dy = clientY - threeState.camOrbit.prevY;
+    threeState.camOrbit.prevX = clientX;
+    threeState.camOrbit.prevY = clientY;
+    threeState.camOrbit.dragDistance += Math.hypot(dx, dy);
+
+    threeState.camOrbit.theta -= dx * 0.007;
+    threeState.camOrbit.phi = Math.max(0.18, Math.min(1.12, threeState.camOrbit.phi - dy * 0.006));
+    threeState.camOrbit.isTopView = false;
+    updateCameraPosition();
+  };
+
+  const onPointerUp = (clientX, clientY) => {
+    const wasClick = threeState.camOrbit.isDragging && threeState.camOrbit.dragDistance < 8;
+    threeState.camOrbit.isDragging = false;
+
+    if (wasClick) {
+      const rect = domEl.getBoundingClientRect();
+      threeState.mouseNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      threeState.mouseNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+      threeState.raycaster.setFromCamera(threeState.mouseNDC, threeState.camera);
+
+      // 1. Klik på felt på banen
+      const tileHits = threeState.raycaster.intersectObjects(threeState.wedgeHitMeshes);
+      if (tileHits.length > 0) {
+        const tileId = tileHits[0].object.userData.tileId;
+        if (tileId !== undefined) {
+          inspectTile(tileId, true);
+          return;
+        }
+      }
+
+      // 2. Klik på 3D-kortbunkerne på pladen
+      const deckHits = threeState.raycaster.intersectObjects(threeState.interactiveProps);
+      if (deckHits.length > 0) {
+        const cfg = deckHits[0].object.userData.deckConfig;
+        if (cfg.playerId !== undefined) {
+          togglePlayerDrawer(cfg.playerId);
+        } else {
+          showSimpleModal(`🃏 ${cfg.title}`, cfg.info);
+        }
+      }
+    }
+  };
+
+  domEl.addEventListener("mousedown", (e) => onPointerDown(e.clientX, e.clientY));
+  window.addEventListener("mousemove", (e) => onPointerMove(e.clientX, e.clientY));
+  window.addEventListener("mouseup", (e) => {
+    if (threeState.camOrbit.isDragging) onPointerUp(e.clientX, e.clientY);
+  });
+
+  domEl.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    setZoom(e.deltaY * 0.012);
+  }, { passive: false });
+
+  domEl.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1) {
+      onPointerDown(e.touches[0].clientX, e.touches[0].clientY);
+    } else if (e.touches.length === 2) {
+      threeState.camOrbit.isDragging = false;
+      threeState.camOrbit.pinchDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    }
+  }, { passive: true });
+
+  domEl.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 1 && threeState.camOrbit.isDragging) {
+      onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+    } else if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const diff = threeState.camOrbit.pinchDist - dist;
+      threeState.camOrbit.pinchDist = dist;
+      setZoom(diff * 0.04);
+    }
+  }, { passive: true });
+
+  domEl.addEventListener("touchend", (e) => {
+    if (e.changedTouches.length === 1 && threeState.camOrbit.isDragging) {
+      onPointerUp(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (!threeState.renderer || !threeState.camera) return;
+    threeState.camera.aspect = window.innerWidth / window.innerHeight;
+    threeState.camera.updateProjectionMatrix();
+    threeState.renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+}
+
+function render3DBuildingsAndOwnership() {
+  if (!threeState.housesGroup) return;
+  while (threeState.housesGroup.children.length > 0) {
+    threeState.housesGroup.remove(threeState.housesGroup.children[0]);
+  }
+
+  BOARD_TILES.forEach((tile, i) => {
+    const own = state.ownership[tile.id];
+    if (!own) return;
+
+    const startRad = BOARD_3D.startAngleOffset + i * BOARD_3D.angleStep;
+    const midRad = startRad + BOARD_3D.angleStep / 2;
+
+    const ownerArcGeo = new THREE.RingGeometry(
+      BOARD_3D.innerWedgeRadius + 0.06,
+      BOARD_3D.innerWedgeRadius + 0.42,
+      4,
+      1,
+      -startRad - BOARD_3D.angleStep + 0.015,
+      BOARD_3D.angleStep - 0.03
+    );
+    ownerArcGeo.rotateX(-Math.PI / 2);
+    const ownerArcMat = new THREE.MeshBasicMaterial({
+      color: own.owner === 0 ? 0x0284c7 : 0xe11d48,
+      side: THREE.DoubleSide
+    });
+    const ownerArc = new THREE.Mesh(ownerArcGeo, ownerArcMat);
+    ownerArc.position.y = BOARD_3D.boardHeight + 0.015;
+    threeState.housesGroup.add(ownerArc);
+
+    if (own.level > 0) {
+      const rBuild = 9.0;
+      if (own.level === 4) {
+        const castle = create3DBuilding(true);
+        castle.position.set(rBuild * Math.cos(midRad), BOARD_3D.boardHeight, rBuild * Math.sin(midRad));
+        castle.lookAt(0, BOARD_3D.boardHeight, 0);
+        threeState.housesGroup.add(castle);
+      } else {
+        const count = own.level;
+        const spread = 0.048;
+        const startOffset = -((count - 1) * spread) / 2;
+        for (let h = 0; h < count; h++) {
+          const ang = midRad + startOffset + h * spread;
+          const house = create3DBuilding(false);
+          house.position.set(rBuild * Math.cos(ang), BOARD_3D.boardHeight, rBuild * Math.sin(ang));
+          house.lookAt(0, BOARD_3D.boardHeight, 0);
+          threeState.housesGroup.add(house);
+        }
+      }
+    }
+  });
+}
+
+function triggerPawn3DHop(playerId) {
+  const p = state.players[playerId];
+  const pawn = threeState.pawnMeshes[playerId];
+  if (!pawn) return;
+
+  const nextCoords = get3DTileCoords(p.pos, playerId);
+  const vs = threeState.pawnVisualState[playerId];
+  vs.startX = pawn.position.x;
+  vs.startZ = pawn.position.z;
+  vs.targetX = nextCoords.x;
+  vs.targetZ = nextCoords.z;
+  vs.hopProgress = 0;
+  vs.hopDuration = Math.max(0.12, getStepDuration() / 1000);
+}
+
+/**
+ * Kaster de to 3D-terninger hen over arenaen UDEN at kameraet zoomer ind!
+ */
+function roll3DDiceAnimation(d1, d2, onComplete) {
+  const anim = threeState.diceAnim;
+  anim.active = true;
+  anim.elapsed = 0;
+  anim.duration = Math.max(0.35, 1.15 / state.speedMultiplier);
+  anim.lastBounceSound = 0;
+  anim.onComplete = onComplete;
+
+  const baseH = BOARD_3D.boardHeight + 0.46;
+  const targets = [d1, d2];
+
+  targets.forEach((val, idx) => {
+    const st = anim.states[idx];
+    const sideSign = idx === 0 ? -1 : 1;
+    st.startPos.set(sideSign * (1.7 + Math.random() * 0.5), baseH + 3.4, 2.9 + Math.random() * 0.4);
+    st.endPos.set(
+      sideSign * (0.72 + Math.random() * 0.45),
+      baseH,
+      1.35 + (Math.random() - 0.5) * 0.75
+    );
+    st.targetRot = getEulerForDieValue(val);
+    st.targetYaw = (Math.random() - 0.5) * Math.PI;
+    st.totalSpin = Math.PI * (4 + Math.floor(Math.random() * 3) * 2);
+  });
+}
+
+function animate3DLoop() {
+  requestAnimationFrame(animate3DLoop);
+
+  const dt = Math.min(threeState.clock.getDelta(), 0.05);
+  const elapsedTotal = threeState.clock.elapsedTime;
+
+  // 1. Lille 3D-færge der sejler rundt i sø-ringen
+  if (threeState.ferryMesh) {
+    threeState.ferryAngle += dt * 0.14;
+    const rFerry = 5.45;
+    const fx = rFerry * Math.cos(threeState.ferryAngle);
+    const fz = rFerry * Math.sin(threeState.ferryAngle);
+    threeState.ferryMesh.position.set(fx, BOARD_3D.boardHeight, fz);
+    threeState.ferryMesh.rotation.y = -threeState.ferryAngle;
+  }
+
+  // 2. Kørende 3D S-tog på yderkanten af banen
+  if (threeState.trainCars.length > 0) {
+    threeState.trainAngle -= dt * 0.24;
+    const rTrack = BOARD_3D.outerRadius + 0.48;
+    threeState.trainCars.forEach((car, idx) => {
+      const carAng = threeState.trainAngle + idx * 0.095;
+      const tx = rTrack * Math.cos(carAng);
+      const tz = rTrack * Math.sin(carAng);
+      car.position.set(tx, BOARD_3D.boardHeight, tz);
+      car.rotation.y = -carAng + Math.PI;
+    });
+  }
+
+  // 3. Fyrtårnets roterende lyskegle & vindmøllernes vinger
+  if (threeState.lighthouseBeam) {
+    threeState.lighthouseBeam.rotation.y += dt * 1.4;
+  }
+  threeState.windmillRotors.forEach((rotor, i) => {
+    rotor.rotation.x += dt * (2.1 + i * 0.25);
+  });
+
+  // 4. Pulserende 3D-markering på valgt kile
+  if (threeState.selectionRing && state.selectedTileId !== null) {
+    threeState.selectionRing.material.opacity = 0.28 + Math.sin(elapsedTotal * 4) * 0.12;
+  }
+
+  // 5. 3D-brik hoppebue
+  state.players.forEach((p, idx) => {
+    const pawn = threeState.pawnMeshes[idx];
+    const vs = threeState.pawnVisualState[idx];
+    if (!pawn || !vs) return;
+
+    if (vs.hopProgress < 1) {
+      vs.hopProgress = Math.min(1, vs.hopProgress + dt / vs.hopDuration);
+      const t = vs.hopProgress;
+      const ease = 1 - Math.pow(1 - t, 2);
+      const curX = vs.startX + (vs.targetX - vs.startX) * ease;
+      const curZ = vs.startZ + (vs.targetZ - vs.startZ) * ease;
+      const hopHeight = Math.sin(t * Math.PI) * 1.35;
+
+      pawn.position.set(curX, BOARD_3D.boardHeight + hopHeight, curZ);
+      pawn.lookAt(0, BOARD_3D.boardHeight, 0);
+    } else {
+      const isTurn = state.currentPlayer === idx && !state.gameOver;
+      const idleBob = isTurn ? Math.max(0, Math.sin(elapsedTotal * 3.5)) * 0.13 : 0;
+      pawn.position.set(vs.targetX, BOARD_3D.boardHeight + idleBob, vs.targetZ);
+    }
+  });
+
+  // 6. 3D-terningernes kast og hop hen over pladen (uden kamera-zoom!)
+  const anim = threeState.diceAnim;
+  if (anim.active && threeState.dice[0] && threeState.dice[1]) {
+    anim.elapsed += dt;
+    const t = Math.min(1, anim.elapsed / anim.duration);
+
+    if (t < 0.8 && anim.elapsed - anim.lastBounceSound > 0.16 / state.speedMultiplier) {
+      anim.lastBounceSound = anim.elapsed;
+      sfx.diceBounce(1 - t * 0.6);
+    }
+
+    anim.states.forEach((st, idx) => {
+      const wrapper = threeState.dice[idx];
+      const inner = wrapper.userData.innerDie;
+
+      const easeH = 1 - Math.pow(1 - t, 3);
+      const x = st.startPos.x + (st.endPos.x - st.startPos.x) * easeH;
+      const z = st.startPos.z + (st.endPos.z - st.startPos.z) * easeH;
+
+      let bounceY = 0;
+      if (t < 0.55) {
+        const u = t / 0.55;
+        bounceY = (1 - u * u) * (st.startPos.y - st.endPos.y);
+      } else if (t < 0.82) {
+        const u = (t - 0.55) / 0.27;
+        bounceY = Math.sin(u * Math.PI) * 0.85;
+      } else {
+        const u = (t - 0.82) / 0.18;
+        bounceY = Math.sin(u * Math.PI) * 0.25;
+      }
+
+      wrapper.position.set(x, st.endPos.y + bounceY, z);
+
+      const rotEase = 1 - Math.pow(1 - t, 3);
+      const remainingSpin = (1 - rotEase) * st.totalSpin;
+      wrapper.rotation.y = st.targetYaw + remainingSpin * 0.5;
+      inner.rotation.set(
+        st.targetRot.x + remainingSpin,
+        0,
+        st.targetRot.z + remainingSpin * 0.75
+      );
+    });
+
+    if (t >= 1) {
+      anim.active = false;
+      anim.states.forEach((st, idx) => {
+        const wrapper = threeState.dice[idx];
+        const inner = wrapper.userData.innerDie;
+        wrapper.position.copy(st.endPos);
+        wrapper.rotation.set(0, st.targetYaw, 0);
+        inner.rotation.copy(st.targetRot);
+      });
+      if (anim.onComplete) {
+        const cb = anim.onComplete;
+        anim.onComplete = null;
+        setTimeout(cb, Math.round(220 / state.speedMultiplier));
+      }
+    }
+  }
+
+  if (threeState.renderer && threeState.scene && threeState.camera) {
+    threeState.renderer.render(threeState.scene, threeState.camera);
+  }
+}
+
+/**
+ * ============================================================================
+ * 6. UI-OPDATERING, SPILLER-SKUFFER & SKØDE-INSPEKTØR
+ * ============================================================================
+ */
+function renderPlayerDrawer(playerId) {
+  const idx = playerId;
+  const p = state.players[idx];
+  const ownedTiles = BOARD_TILES.filter(t => state.ownership[t.id]?.owner === idx);
+
+  const content = document.getElementById(`player-drawer-${idx}-content`);
+  if (!content) return;
+
+  content.innerHTML = `
+    <div class="flex items-center gap-3 mb-3">
+      <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl border ${idx === 0 ? "bg-sky-100 border-sky-400" : "bg-rose-100 border-rose-400"}">${p.avatar}</div>
+      <div>
+        <div class="font-extrabold text-base text-slate-900">${p.name}</div>
+        <div class="text-xs font-semibold ${idx === 0 ? "text-sky-700" : "text-rose-700"}">${p.factionLabel}</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <div class="bg-white/90 rounded-xl p-2.5 border ${idx === 0 ? "border-sky-200" : "border-rose-200"}">
+        <div class="text-[10px] text-slate-500 font-semibold">Kassebeholdning</div>
+        <div class="text-sm font-black text-emerald-700">${formatDKK(p.money)}</div>
+      </div>
+      <div class="bg-white/90 rounded-xl p-2.5 border ${idx === 0 ? "border-sky-200" : "border-rose-200"}">
+        <div class="text-[10px] text-slate-500 font-semibold">Skøder / Vundne slag</div>
+        <div class="text-sm font-bold text-slate-800">${ownedTiles.length} grunde • ${p.battlesWon} ⚔️</div>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-1 mb-3">
+      ${p.inJail ? `<span class="text-[10px] px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300 font-bold">🅿️ Fængslet</span>` : ""}
+      ${p.skipNextTurn ? `<span class="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 font-bold">⏳ Springer tur over</span>` : ""}
+    </div>
+
+    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2">
+      Skødekort (klik for at bygge/se detaljer)
+    </div>
+    <div class="grid grid-cols-2 gap-1.5">
+      ${ownedTiles.length === 0
+        ? `<p class="col-span-2 text-xs text-slate-500 italic py-2">Ingen skøder erhvervet endnu...</p>`
+        : ownedTiles.map(t => {
+            const ownInfo = state.ownership[t.id];
+            const currentRent = calculateRent(t.id);
+            const bIcon = ownInfo.level === 4 ? "🏰" : (ownInfo.level > 0 ? "🏠".repeat(ownInfo.level) : "");
+            return `
+              <div onclick="inspectTile(${t.id}, true)" class="deed-card rounded-lg overflow-hidden cursor-pointer text-[10px]">
+                <div class="px-1.5 py-1 font-extrabold text-white truncate flex items-center justify-between" style="background:${t.color}">
+                  <span class="truncate drop-shadow-sm">${t.name}</span>
+                  <span>${bIcon}</span>
+                </div>
+                <div class="p-1.5 bg-white text-slate-700 flex justify-between items-center">
+                  <span class="text-slate-400">Leje:</span>
+                  <strong class="text-slate-900">${formatDKK(currentRent)}</strong>
+                </div>
+              </div>
+            `;
+          }).join("")
+      }
+    </div>
+  `;
+}
+
+function updateUI() {
+  document.getElementById("ui-round").textContent = state.turnCount;
+  document.getElementById("ui-pot").textContent = formatDKK(state.freeParkingPot);
+
+  render3DBuildingsAndOwnership();
+
+  state.players.forEach((p, idx) => {
+    document.getElementById(`p${idx}-name`).textContent = p.name;
+    document.getElementById(`p${idx}-avatar`).textContent = p.avatar;
+    document.getElementById(`p${idx}-money`).textContent = formatDKK(p.money);
+
+    const ownedTiles = BOARD_TILES.filter(t => state.ownership[t.id]?.owner === idx);
+    document.getElementById(`p${idx}-prop-count`).textContent = ownedTiles.length;
+
+    const pill = document.getElementById(`pill-player-${idx}`);
+    const badge = document.getElementById(`p${idx}-turn-badge`);
+    if (state.currentPlayer === idx) {
+      pill.classList.add("ring-2", "ring-amber-400", "scale-[1.03]");
+      badge.classList.remove("hidden");
+    } else {
+      pill.classList.remove("ring-2", "ring-amber-400", "scale-[1.03]");
+      badge.classList.add("hidden");
+    }
+
+    if (document.getElementById(`player-drawer-${idx}`).classList.contains("open")) {
+      renderPlayerDrawer(idx);
+    }
+  });
+
+  const activeP = state.players[state.currentPlayer];
+  const activeTitle = document.getElementById("ui-active-player");
+  const activeAvatar = document.getElementById("ui-active-avatar");
+  activeTitle.textContent = activeP.name;
+  activeTitle.className = `font-display text-sm sm:text-base font-extrabold truncate ${activeP.id === 0 ? "text-sky-400" : "text-rose-400"}`;
+  activeAvatar.textContent = activeP.avatar;
+  activeAvatar.className = `w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center text-xl shadow border-2 ${activeP.id === 0 ? "bg-sky-900/70 border-sky-400" : "bg-rose-900/70 border-rose-400"}`;
+
+  const btnRoll = document.getElementById("btn-roll");
+  const jailControls = document.getElementById("jail-controls");
+  const btnEnd = document.getElementById("btn-end-turn");
+  const hint = document.getElementById("ui-turn-hint");
+
+  if (state.isAnimating || state.gameOver) {
+    btnRoll.classList.add("hidden");
+    jailControls.classList.add("hidden");
+    btnEnd.classList.add("hidden");
+  } else if (activeP.inJail && !state.hasRolled) {
+    btnRoll.classList.add("hidden");
+    jailControls.classList.remove("hidden");
+    btnEnd.classList.add("hidden");
+    hint.textContent = "Fængslet! Betal 1.000 kr. eller slå to ens.";
+  } else if (!state.hasRolled) {
+    btnRoll.classList.remove("hidden");
+    jailControls.classList.add("hidden");
+    btnEnd.classList.add("hidden");
+    hint.textContent = state.doublesCount > 0 ? "To ens! Ekstrakast!" : "Klik rundt på banen eller kast 3D-terningerne!";
+  } else {
+    btnRoll.classList.add("hidden");
+    jailControls.classList.add("hidden");
+    btnEnd.classList.remove("hidden");
+    hint.textContent = "Klik på dine felter for at bygge huse eller afslut tur.";
+  }
+
+  if (state.selectedTileId !== null && document.getElementById("inspector-drawer").classList.contains("open")) {
+    inspectTile(state.selectedTileId, false);
+  }
+}
+
+function hasMonopoly(playerId, group) {
+  if (!group) return false;
+  const groupTiles = BOARD_TILES.filter(t => t.group === group);
+  return groupTiles.every(t => state.ownership[t.id]?.owner === playerId);
+}
+
+function calculateRent(tileId) {
+  const tile = BOARD_TILES[tileId];
+  const own = state.ownership[tileId];
+  if (!own || tile.type !== "property") return 0;
+
+  if (own.level === 0) {
+    return hasMonopoly(own.owner, tile.group) ? tile.rents[1] : tile.rents[0];
+  }
+  return tile.rents[own.level + 1];
+}
+
+function isDefenderHomeTurf(defenderId, tile) {
+  return state.players[defenderId].faction === tile.zone;
+}
+
+function inspectTile(tileId, openDrawer = true) {
+  state.selectedTileId = tileId;
+
+  if (threeState.selectionRing) {
+    const startRad = BOARD_3D.startAngleOffset + tileId * BOARD_3D.angleStep;
+    const selGeo = new THREE.RingGeometry(
+      BOARD_3D.innerWedgeRadius,
+      BOARD_3D.outerRadius,
+      6,
+      1,
+      -startRad - BOARD_3D.angleStep,
+      BOARD_3D.angleStep
+    );
+    selGeo.rotateX(-Math.PI / 2);
+    threeState.selectionRing.geometry.dispose();
+    threeState.selectionRing.geometry = selGeo;
+    threeState.selectionRing.material.opacity = 0.34;
+  }
+
+  if (openDrawer) {
+    closePlayerDrawer(1);
+    document.getElementById("inspector-drawer").classList.add("open");
+  }
+
+  const tile = BOARD_TILES[tileId];
+  const container = document.getElementById("inspector-content");
+  const own = state.ownership[tileId];
+  const ownerPlayer = own !== undefined ? state.players[own.owner] : null;
+
+  let zoneBadge = `<span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-[10px] font-bold">Neutral</span>`;
+  if (tile.zone === "greve") {
+    zoneBadge = `<span class="px-2 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-300 text-[10px] font-bold">🌊 Greve-zone</span>`;
+  } else if (tile.zone === "hillerod") {
+    zoneBadge = `<span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold">🏰 Hillerød-zone</span>`;
+  }
+
+  if (tile.type === "property") {
+    const currentRent = own ? calculateRent(tileId) : tile.rents[0];
+    const canManage = own && own.owner === state.currentPlayer && !state.isAnimating && !state.gameOver;
+    const mono = own && hasMonopoly(own.owner, tile.group);
+
+    let buildButtons = "";
+    if (canManage) {
+      const p = state.players[state.currentPlayer];
+      const canBuild = mono && own.level < 4 && p.money >= tile.buildCost;
+      const canSell = own.level > 0;
+      const nextLabel = own.level === 3 ? "Opgrader til 3D-Slot 🏰" : "Byg 1 3D-Hus 🏠";
+
+      buildButtons = `
+        <div class="mt-3 pt-2.5 border-t border-slate-200 space-y-1.5">
+          ${!mono ? `<p class="text-[11px] text-amber-700 font-medium">Saml alle ${tile.groupName}-skøder for at bygge 3D-huse.</p>` : ""}
+          ${mono && own.level < 4 ? `
+            <button onclick="buildHouse(${tile.id})" ${!canBuild ? "disabled" : ""} class="w-full py-2 px-3 rounded-xl font-bold text-xs transition ${canBuild ? "bg-emerald-700 hover:bg-emerald-600 text-white shadow" : "bg-stone-200 text-stone-400 cursor-not-allowed"}">
+              ${nextLabel} (${formatDKK(tile.buildCost)})
+            </button>
+          ` : ""}
+          ${canSell ? `
+            <button onclick="sellHouse(${tile.id})" class="w-full py-1.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-rose-700 font-bold text-xs border border-stone-300 transition">
+              Sælg 1 hus (+${formatDKK(Math.floor(tile.buildCost / 2))})
+            </button>
+          ` : ""}
+        </div>
+      `;
+    }
+
+    container.innerHTML = `
+      <div class="rounded-xl overflow-hidden border-2 border-slate-300 bg-white shadow-sm">
+        <div class="px-3 py-2 font-extrabold text-white flex items-center justify-between" style="background:${tile.color}">
+          <span class="drop-shadow-sm">${tile.name}</span>
+          <span class="text-[10px] uppercase tracking-wider bg-black/25 px-2 py-0.5 rounded">${tile.groupName}</span>
+        </div>
+        <div class="p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            ${zoneBadge}
+            <span class="text-slate-600">Pris: <strong class="text-slate-900">${formatDKK(tile.price)}</strong></span>
+          </div>
+          <div class="text-xs text-slate-700">
+            Ejer: <strong class="text-slate-900">${ownerPlayer ? `${ownerPlayer.avatar} ${ownerPlayer.name}` : "Ledig grund"}</strong>
+            ${own ? ` • Leje: <strong class="text-emerald-700">${formatDKK(currentRent)}</strong>` : ""}
+          </div>
+          <div class="bg-stone-50 rounded-lg p-2.5 text-[11px] space-y-1 border border-stone-200 text-slate-700">
+            <div class="flex justify-between"><span>Grundleje:</span><strong>${formatDKK(tile.rents[0])}</strong></div>
+            <div class="flex justify-between text-amber-800"><span>Med monopol:</span><strong>${formatDKK(tile.rents[1])}</strong></div>
+            <div class="flex justify-between"><span>1 Hus 🏠:</span><strong>${formatDKK(tile.rents[2])}</strong></div>
+            <div class="flex justify-between"><span>2 Huse 🏠🏠:</span><strong>${formatDKK(tile.rents[3])}</strong></div>
+            <div class="flex justify-between"><span>3 Huse 🏠🏠🏠:</span><strong>${formatDKK(tile.rents[4])}</strong></div>
+            <div class="flex justify-between font-extrabold text-red-700 border-t border-stone-200 pt-1"><span>Slot / Badehotel 🏰:</span><span>${formatDKK(tile.rents[5])}</span></div>
+            <div class="flex justify-between text-[10px] text-slate-500 pt-0.5"><span>Pris pr. hus:</span><span>${formatDKK(tile.buildCost)}</span></div>
+          </div>
+          ${buildButtons}
+        </div>
+      </div>
+    `;
+  } else {
+    container.innerHTML = `
+      <div class="rounded-xl border border-slate-300 bg-stone-50 p-3 space-y-1.5">
+        <div class="font-extrabold text-sm text-red-800">${tile.icon} ${tile.name} (Felt ${tile.id})</div>
+        <p class="text-slate-700 leading-relaxed">${tile.desc}</p>
+      </div>
+    `;
+  }
+}
+
+function buildHouse(tileId) {
+  const tile = BOARD_TILES[tileId];
+  const own = state.ownership[tileId];
+  const p = state.players[state.currentPlayer];
+
+  if (!own || own.owner !== p.id || !hasMonopoly(p.id, tile.group)) return;
+  if (own.level >= 4 || p.money < tile.buildCost) return;
+
+  p.money -= tile.buildCost;
+  own.level += 1;
+  sfx.coin();
+
+  const label = own.level === 4 ? "et 3D-Slot / Badehotel 🏰" : `3D-hus nr. ${own.level} 🏠`;
+  logEvent(`<strong>${p.name}</strong> byggede ${label} på <strong>${tile.name}</strong>!`, "text-emerald-800");
+  updateUI();
+}
+
+function sellHouse(tileId) {
+  const tile = BOARD_TILES[tileId];
+  const own = state.ownership[tileId];
+  const p = state.players[state.currentPlayer];
+
+  if (!own || own.owner !== p.id || own.level <= 0) return;
+
+  const refund = Math.floor(tile.buildCost / 2);
+  own.level -= 1;
+  p.money += refund;
+  sfx.coin();
+
+  logEvent(`<strong>${p.name}</strong> solgte 1 hus på <strong>${tile.name}</strong> og modtog ${formatDKK(refund)}.`);
+  updateUI();
+}
+
+/**
+ * ============================================================================
+ * 7. TERNINGEKAST (3D), HOPPENDE 3D-BRIKKER & FÆNGSEL
+ * ============================================================================
+ */
+function rollTwoDice() {
+  return [
+    Math.floor(Math.random() * 6) + 1,
+    Math.floor(Math.random() * 6) + 1
+  ];
+}
+
+function handleRollDice() {
+  if (state.isAnimating || state.hasRolled || state.gameOver) return;
+  const p = state.players[state.currentPlayer];
+
+  closePlayerDrawer();
+  closeInspectorDrawer();
+  toggleLogDrawer(false);
+
+  state.isAnimating = true;
+  document.getElementById("ui-dice-values").textContent = "Ruller...";
+  updateUI();
+
+  const [d1, d2] = rollTwoDice();
+  const isDouble = d1 === d2;
+
+  roll3DDiceAnimation(d1, d2, () => {
+    document.getElementById("ui-dice-values").textContent = `${d1} + ${d2} = ${d1 + d2}${isDouble ? " (TO ENS!)" : ""}`;
+    logEvent(`<strong>${p.name}</strong> slog <strong>${d1} + ${d2} = ${d1 + d2}</strong>${isDouble ? " (TO ENS!)" : ""}.`);
+
+    if (isDouble) {
+      state.doublesCount++;
+      if (state.doublesCount >= 3) {
+        logEvent(`🚨 <strong>${p.name}</strong> slog to ens 3 gange i træk og ryger direkte i fængsel!`, "text-rose-700");
+        sendToJail(p);
+        return;
+      }
+    } else {
+      state.doublesCount = 0;
+    }
+
+    if (!isDouble) {
+      state.hasRolled = true;
+    }
+
+    movePlayerSteps(p, d1 + d2, () => {
+      state.isAnimating = false;
+      updateUI();
+      resolveTileLanding(p);
+    });
+  });
+}
+
+function handleJailRoll() {
+  if (state.isAnimating || state.gameOver) return;
+  const p = state.players[state.currentPlayer];
+  closePlayerDrawer();
+  closeInspectorDrawer();
+
+  state.isAnimating = true;
+  document.getElementById("ui-dice-values").textContent = "Ruller...";
+  updateUI();
+
+  const [d1, d2] = rollTwoDice();
+  roll3DDiceAnimation(d1, d2, () => {
+    document.getElementById("ui-dice-values").textContent = `${d1} & ${d2}`;
+    if (d1 === d2) {
+      p.inJail = false;
+      p.jailTurns = 0;
+      state.hasRolled = true;
+      logEvent(`🎉 <strong>${p.name}</strong> slog to ens (${d1} & ${d2}) og slap ud af fængslet!`, "text-emerald-700");
+      movePlayerSteps(p, d1 + d2, () => {
+        state.isAnimating = false;
+        updateUI();
+        resolveTileLanding(p);
+      });
+    } else {
+      p.jailTurns++;
+      state.hasRolled = true;
+      state.isAnimating = false;
+      if (p.jailTurns >= 2) {
+        p.inJail = false;
+        p.jailTurns = 0;
+        logEvent(`<strong>${p.name}</strong> slog ${d1} & ${d2}, men har afsonet sin straf og er fri næste tur.`);
+      } else {
+        logEvent(`<strong>${p.name}</strong> slog ${d1} & ${d2} og bliver i fængslet.`);
+      }
+      updateUI();
+    }
+  });
+}
+
+function handlePayJail() {
+  const p = state.players[state.currentPlayer];
+  if (p.money < 1000) {
+    showSimpleModal("Ikke nok penge!", "Du mangler penge til kautionen på 1.000 kr.");
+    return;
+  }
+  p.money -= 1000;
+  state.freeParkingPot += 1000;
+  p.inJail = false;
+  p.jailTurns = 0;
+  sfx.pay();
+  logEvent(`💸 <strong>${p.name}</strong> betalte 1.000 kr. i kaution og er fri!`);
+  updateUI();
+}
+
+function sendToJail(player) {
+  player.pos = 8;
+  player.inJail = true;
+  player.jailTurns = 0;
+  state.doublesCount = 0;
+  state.hasRolled = true;
+  state.isAnimating = false;
+  sfx.pay();
+  triggerPawn3DHop(player.id);
+  updateUI();
+}
+
+function movePlayerSteps(player, steps, onComplete) {
+  let remaining = Math.abs(steps);
+  const direction = steps >= 0 ? 1 : -1;
+  let stepCounter = 0;
+
+  if (remaining === 0) {
+    onComplete();
+    return;
+  }
+
+  const doOneStep = () => {
+    player.pos = (player.pos + direction + BOARD_TILES.length) % BOARD_TILES.length;
+    sfx.hop(stepCounter++);
+    triggerPawn3DHop(player.id);
+
+    if (direction > 0 && player.pos === 0) {
+      player.money += 4000;
+      sfx.coin();
+      logEvent(`🏁 <strong>${player.name}</strong> passerede START og modtog <strong>4.000 kr.</strong>!`, "text-emerald-700");
+      document.getElementById(`p${player.id}-money`).textContent = formatDKK(player.money);
+    }
+
+    remaining--;
+    if (remaining > 0) {
+      setTimeout(doOneStep, getStepDuration());
+    } else {
+      setTimeout(onComplete, Math.round(getStepDuration() * 0.7));
+    }
+  };
+
+  doOneStep();
+}
+
+/**
+ * ============================================================================
+ * 8. LANDING PÅ FELTER, KØB, LEJE & SLAG
+ * ============================================================================
+ */
+function resolveTileLanding(player) {
+  const tile = BOARD_TILES[player.pos];
+  inspectTile(tile.id, false);
+
+  if (tile.type === "start") {
+    updateUI();
+    return;
+  }
+
+  if (tile.type === "jail") {
+    logEvent(`🅿️ <strong>${player.name}</strong> er på besøg ved fængslet.`);
+    return;
+  }
+
+  if (tile.type === "tax") {
+    logEvent(`💰 <strong>${player.name}</strong> betalte <strong>${formatDKK(tile.amount)}</strong> i byskat til puljen.`, "text-rose-700");
+    showSimpleModal("💰 Byskat!", `Du er landet på Byskat og skal betale <strong>${formatDKK(tile.amount)}</strong> til midterpuljen.`, () => {
+      payToPot(player, tile.amount);
+    });
+    return;
+  }
+
+  if (tile.type === "parking") {
+    const wonPot = state.freeParkingPot;
+    player.money += wonPot;
+    state.freeParkingPot = 2000;
+    sfx.coin();
+    logEvent(`🏖️ <strong>${player.name}</strong> holder ferie i Sommerhuset og vinder puljen på <strong>${formatDKK(wonPot)}</strong>!`, "text-amber-700");
+    showSimpleModal("🏖️ Sommerhus på Kysten!", `Du slapper af ved kysten og inkasserer hele bødepuljen på <strong class="text-emerald-700">${formatDKK(wonPot)}</strong>!`);
+    updateUI();
+    return;
+  }
+
+  if (tile.type === "gotojail") {
+    logEvent(`🚨 <strong>${player.name}</strong> ryger direkte i fængsel!`, "text-rose-700");
+    showSimpleModal("🚨 Gå i Fængsel!", "Du ryger direkte til Fængslet uden at inkassere START-penge!", () => {
+      sendToJail(player);
+    });
+    return;
+  }
+
+  if (tile.type === "event") {
+    drawEventCard(player, tile.name);
+    return;
+  }
+
+  if (tile.type === "property") {
+    const own = state.ownership[tile.id];
+
+    if (own === undefined) {
+      openBuyModal(player, tile);
+      return;
+    }
+
+    if (own.owner === player.id) {
+      logEvent(`🏡 <strong>${player.name}</strong> landede på sin egen grund: <strong>${tile.name}</strong>.`);
+      return;
+    }
+
+    openRentOrBattleModal(player, tile, own);
+  }
+}
+
+function openBuyModal(player, tile) {
+  const canAfford = player.money >= tile.price;
+  const isHome = player.faction === tile.zone;
+  const modal = document.getElementById("action-modal");
+  const box = document.getElementById("action-modal-box");
+
+  box.innerHTML = `
+    <div class="inline-block px-3 py-1 rounded-full text-white text-xs font-extrabold mb-2" style="background:${tile.color}">
+      Ledigt Skøde • ${tile.groupName}
+    </div>
+    <h3 class="font-display text-2xl font-black text-slate-900 mb-1">${tile.name}</h3>
+    ${isHome ? `<div class="text-xs text-emerald-700 font-bold mb-2">✨ Dette er i din hjemby (${player.factionLabel})!</div>` : `<div class="mb-2"></div>`}
+    <div class="rounded-2xl bg-stone-100 border border-stone-200 p-4 my-3 space-y-1.5 text-sm">
+      <div class="flex justify-between"><span class="text-slate-500">Købspris:</span><strong class="text-slate-900">${formatDKK(tile.price)}</strong></div>
+      <div class="flex justify-between"><span class="text-slate-500">Grundleje:</span><strong class="text-emerald-700">${formatDKK(tile.rents[0])}</strong></div>
+      <div class="flex justify-between"><span class="text-slate-500">Din kassebeholdning:</span><strong class="text-slate-900">${formatDKK(player.money)}</strong></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mt-4">
+      <button id="modal-btn-pass" class="py-3 rounded-xl bg-stone-200 hover:bg-stone-300 text-slate-800 font-bold text-sm transition">
+        Spring over
+      </button>
+      <button id="modal-btn-buy" ${!canAfford ? "disabled" : ""} class="py-3 rounded-xl font-extrabold text-sm transition ${canAfford ? "bg-emerald-700 hover:bg-emerald-600 text-white shadow-lg" : "bg-stone-200 text-stone-400 cursor-not-allowed"}">
+        ${canAfford ? `💰 Køb (${formatDKK(tile.price)})` : "Ikke råd"}
+      </button>
+    </div>
+  `;
+
+  modal.classList.remove("hidden");
+
+  document.getElementById("modal-btn-pass").onclick = () => {
+    modal.classList.add("hidden");
+    logEvent(`<strong>${player.name}</strong> valgte ikke at købe <strong>${tile.name}</strong>.`);
+  };
+
+  if (canAfford) {
+    document.getElementById("modal-btn-buy").onclick = () => {
+      player.money -= tile.price;
+      state.ownership[tile.id] = { owner: player.id, level: 0 };
+      sfx.coin();
+      modal.classList.add("hidden");
+      logEvent(`💰 <strong>${player.name}</strong> købte skødet på <strong>${tile.name}</strong> for ${formatDKK(tile.price)}!`, "text-emerald-700");
+      updateUI();
+    };
+  }
+}
+
+function openRentOrBattleModal(attacker, tile, own) {
+  const defender = state.players[own.owner];
+  const rent = calculateRent(tile.id);
+  const penaltyRent = Math.round(rent * 1.5);
+  const homeBonus = isDefenderHomeTurf(defender.id, tile);
+
+  const isMaxFortress = own.level === 4;
+  const canBattle = !state.battleUsedThisTurn && !isMaxFortress;
+
+  let battleDisabledReason = "";
+  if (state.battleUsedThisTurn) battleDisabledReason = "Du har allerede udkæmpet et slag i denne tur.";
+  if (isMaxFortress) battleDisabledReason = "Feltet er beskyttet af et uindtageligt 3D-Slot / Badehotel!";
+
+  const modal = document.getElementById("action-modal");
+  const box = document.getElementById("action-modal-box");
+
+  box.innerHTML = `
+    <div class="inline-block px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-extrabold mb-2">
+      Fjendtligt Territorium!
+    </div>
+    <h3 class="font-display text-2xl font-black text-slate-900">${tile.name}</h3>
+    <p class="text-xs text-slate-600 mt-1">Ejet af <strong class="text-slate-900">${defender.avatar} ${defender.name}</strong></p>
+
+    <div class="rounded-2xl bg-stone-100 border border-stone-200 p-4 my-4 space-y-2 text-sm">
+      <div class="flex justify-between">
+        <span class="text-slate-600">Almindelig leje:</span>
+        <strong class="text-slate-900">${formatDKK(rent)}</strong>
+      </div>
+      <div class="flex justify-between text-xs">
+        <span class="text-slate-500">Ved tabt slag (1,5x krigserstatning):</span>
+        <strong class="text-rose-700">${formatDKK(penaltyRent)}</strong>
+      </div>
+      ${homeBonus ? `
+        <div class="mt-2 pt-2 border-t border-stone-300 text-xs text-amber-800 font-semibold">
+          🛡️ <strong>Hjemmebanefordel!</strong> ${defender.name} forsvarer sin egen hjemby.
+        </div>
+      ` : ""}
+    </div>
+
+    <div class="space-y-2.5">
+      <button id="btn-pay-rent" class="w-full py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-bold text-sm transition">
+        💸 Betal leje (${formatDKK(rent)})
+      </button>
+
+      <button id="btn-declare-battle" ${!canBattle ? "disabled" : ""} class="w-full py-3.5 rounded-xl font-extrabold text-sm transition ${canBattle ? "bg-red-700 hover:bg-red-600 text-white shadow-lg border-2 border-amber-300" : "bg-stone-200 text-stone-400 cursor-not-allowed"}">
+        ⚔️ ERKLÆR SLAG OM FELTET!
+      </button>
+      ${!canBattle ? `<p class="text-[11px] text-slate-500">${battleDisabledReason}</p>` : `
+        <p class="text-[11px] text-slate-500">
+          Vind: ${own.level > 0 ? "Riv 1 hus ned og slip for leje!" : "Overtag skødet gratis!"}
+        </p>
+      `}
+    </div>
+  `;
+
+  modal.classList.remove("hidden");
+
+  document.getElementById("btn-pay-rent").onclick = () => {
+    modal.classList.add("hidden");
+    transferMoney(attacker, defender, rent, `betalte leje på <strong>${tile.name}</strong> til ${defender.name}`);
+  };
+
+  if (canBattle) {
+    document.getElementById("btn-declare-battle").onclick = () => {
+      modal.classList.add("hidden");
+      state.battleUsedThisTurn = true;
+      openBattleSetupModal(attacker, defender, tile, own, rent, penaltyRent, homeBonus);
+    };
+  }
+}
+
+/**
+ * ============================================================================
+ * 9. SLAG-DUEL (KANON-DUEL & TERNINGE-SLAG)
+ * ============================================================================
+ */
+function openBattleSetupModal(attacker, defender, tile, own, rent, penaltyRent, homeBonus) {
+  const modal = document.getElementById("battle-modal");
+  const box = document.getElementById("battle-modal-box");
+
+  box.innerHTML = `
+    <div class="text-center">
+      <span class="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-extrabold uppercase tracking-wider">
+        ⚔️ Slaget om ${tile.name}
+      </span>
+      <h3 class="font-display text-2xl font-extrabold text-white mt-2">
+        ${attacker.avatar} ${attacker.name} <span class="text-amber-400 text-lg">vs.</span> ${defender.avatar} ${defender.name}
+      </h3>
+      ${homeBonus ? `<p class="text-xs text-rose-300 mt-1">🛡️ Forsvareren har <strong>Hjemmebanefordel</strong> (+2 bonus / smallere målzone)!</p>` : ""}
+
+      <p class="text-sm text-stone-300 mt-4 mb-4">Vælg kampform:</p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+        <button id="choose-cannon" class="p-4 rounded-2xl bg-stone-950 hover:bg-stone-800 border-2 border-amber-500/50 hover:border-amber-400 transition group">
+          <div class="text-2xl mb-1">💣</div>
+          <div class="font-bold text-white group-hover:text-amber-400">Kanon-duel (Timing)</div>
+          <p class="text-xs text-stone-400 mt-1">Stop sigtekornet i den grønne træfzone!</p>
+        </button>
+
+        <button id="choose-dice-duel" class="p-4 rounded-2xl bg-stone-950 hover:bg-stone-800 border-2 border-sky-500/50 hover:border-sky-400 transition group">
+          <div class="text-2xl mb-1">🎲</div>
+          <div class="font-bold text-white group-hover:text-sky-400">Terninge-slag</div>
+          <p class="text-xs text-stone-400 mt-1">Begge kaster 2 terninger. Højeste sum vinder.</p>
+        </button>
+      </div>
+    </div>
+  `;
+
+  modal.classList.remove("hidden");
+
+  document.getElementById("choose-cannon").onclick = () => {
+    startCannonMiniGame(attacker, defender, tile, own, rent, penaltyRent, homeBonus);
+  };
+
+  document.getElementById("choose-dice-duel").onclick = () => {
+    startDiceDuelMiniGame(attacker, defender, tile, own, rent, penaltyRent, homeBonus);
+  };
+}
+
+function startCannonMiniGame(attacker, defender, tile, own, rent, penaltyRent, homeBonus) {
+  const box = document.getElementById("battle-modal-box");
+  const zoneWidth = Math.max(14, (homeBonus ? 20 : 30) - own.level * 3);
+  const zoneStart = 50 - zoneWidth / 2;
+  const zoneEnd = 50 + zoneWidth / 2;
+
+  box.innerHTML = `
+    <div class="text-center">
+      <div class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">💣 Kanon-duel</div>
+      <h3 class="font-display text-xl font-bold text-white mb-2">Ramt det grønne felt!</h3>
+      <p class="text-xs text-stone-400 mb-5">${attacker.name}, tryk på <strong>FYR KANONEN!</strong> når markøren er i midten.</p>
+
+      <div class="relative w-full h-10 rounded-full bg-stone-950 border-2 border-stone-700 overflow-hidden mb-6 shadow-inner">
+        <div class="absolute top-0 bottom-0 bg-emerald-500/85 border-x-2 border-emerald-300" style="left: ${zoneStart}%; width: ${zoneWidth}%;"></div>
+        <div id="cannon-cursor" class="absolute top-0 bottom-0 w-2 bg-amber-400 shadow-[0_0_12px_#fbbf24]" style="left: 0%;"></div>
+      </div>
+
+      <button id="btn-fire-cannon" class="w-full py-4 rounded-2xl bg-red-700 hover:bg-red-600 text-white font-extrabold text-lg tracking-wider shadow-xl border-2 border-amber-300 transition transform active:scale-95">
+        💥 FYR KANONEN!
+      </button>
+    </div>
+  `;
+
+  let pos = 0;
+  let dir = 1;
+  const speed = homeBonus ? 2.2 : 1.7;
+  let active = true;
+  const cursorEl = document.getElementById("cannon-cursor");
+
+  function loop() {
+    if (!active) return;
+    pos += dir * speed;
+    if (pos >= 98) { pos = 98; dir = -1; }
+    else if (pos <= 0) { pos = 0; dir = 1; }
+    cursorEl.style.left = pos + "%";
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  document.getElementById("btn-fire-cannon").onclick = () => {
+    if (!active) return;
+    active = false;
+    sfx.cannon();
+    const hit = pos >= zoneStart && pos <= zoneEnd;
+    setTimeout(() => {
+      resolveBattleOutcome(hit, attacker, defender, tile, own, rent, penaltyRent);
+    }, 450);
+  };
+}
+
+function startDiceDuelMiniGame(attacker, defender, tile, own, rent, penaltyRent, homeBonus) {
+  const box = document.getElementById("battle-modal-box");
+  const bonus = homeBonus ? 2 : 0;
+
+  box.innerHTML = `
+    <div class="text-center">
+      <div class="text-xs font-bold uppercase tracking-wider text-sky-400 mb-1">🎲 Terninge-slag</div>
+      <h3 class="font-display text-xl font-bold text-white mb-4">Kæmp om ${tile.name}!</h3>
+
+      <div class="grid grid-cols-2 gap-4 my-4">
+        <div class="rounded-2xl bg-stone-950 border border-sky-500/40 p-4">
+          <div class="text-xs text-stone-400">Angriber</div>
+          <div class="font-bold text-white mb-2">${attacker.avatar} ${attacker.name}</div>
+          <div id="duel-att-dice" class="text-3xl font-extrabold text-amber-400">🎲 🎲</div>
+          <div id="duel-att-total" class="text-xs text-stone-300 mt-2">Kaster...</div>
+        </div>
+
+        <div class="rounded-2xl bg-stone-950 border border-rose-500/40 p-4">
+          <div class="text-xs text-stone-400">Forsvarer ${bonus > 0 ? "(+2 Hjemmebane)" : ""}</div>
+          <div class="font-bold text-white mb-2">${defender.avatar} ${defender.name}</div>
+          <div id="duel-def-dice" class="text-3xl font-extrabold text-amber-400">🎲 🎲</div>
+          <div id="duel-def-total" class="text-xs text-stone-300 mt-2">Kaster...</div>
+        </div>
+      </div>
+
+      <button id="btn-roll-duel" class="w-full py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-extrabold text-base shadow-lg transition">
+        🎲 KAST KAMPTERNINGER!
+      </button>
+    </div>
+  `;
+
+  document.getElementById("btn-roll-duel").onclick = (e) => {
+    e.target.disabled = true;
+    sfx.diceBounce(1);
+
+    const [a1, a2] = rollTwoDice();
+    const [d1, d2] = rollTwoDice();
+    const attSum = a1 + a2;
+    const defSum = d1 + d2 + bonus;
+
+    setTimeout(() => {
+      document.getElementById("duel-att-dice").textContent = `${a1} + ${a2}`;
+      document.getElementById("duel-att-total").innerHTML = `Total: <strong class="text-white text-sm">${attSum}</strong>`;
+
+      document.getElementById("duel-def-dice").textContent = `${d1} + ${d2}${bonus > 0 ? ` (+${bonus})` : ""}`;
+      document.getElementById("duel-def-total").innerHTML = `Total: <strong class="text-white text-sm">${defSum}</strong>`;
+
+      const attackerWon = attSum > defSum;
+      setTimeout(() => {
+        resolveBattleOutcome(attackerWon, attacker, defender, tile, own, rent, penaltyRent);
+      }, 1100);
+    }, 550);
+  };
+}
+
+function resolveBattleOutcome(attackerWon, attacker, defender, tile, own, rent, penaltyRent) {
+  const modal = document.getElementById("battle-modal");
+  const box = document.getElementById("battle-modal-box");
+
+  if (attackerWon) {
+    sfx.battleWin();
+    attacker.battlesWon++;
+    defender.battlesLost++;
+
+    let resultMsg = "";
+    if (own.level > 0) {
+      own.level -= 1;
+      resultMsg = `Du gennembrød forsvaret og rev <strong>1 hus</strong> ned på <strong>${tile.name}</strong> – og slipper for leje!`;
+      logEvent(`⚔️ <strong>${attacker.name}</strong> vandt slaget ved <strong>${tile.name}</strong> og rev et hus ned!`, "text-emerald-700");
+    } else {
+      own.owner = attacker.id;
+      resultMsg = `Triumf! Du besejrede ${defender.name} og <strong>erobrede skødet på ${tile.name}</strong>!`;
+      logEvent(`⚔️ <strong>${attacker.name}</strong> erobrede <strong>${tile.name}</strong> fra ${defender.name} i slag!`, "text-emerald-700");
+    }
+
+    box.innerHTML = `
+      <div class="text-center py-2">
+        <div class="text-5xl mb-3">🏆</div>
+        <h3 class="font-display text-2xl font-extrabold text-emerald-400">SEJR I SLAGET!</h3>
+        <p class="text-sm text-stone-200 mt-2 mb-6">${resultMsg}</p>
+        <button id="btn-close-battle" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-extrabold text-sm">
+          Fortsæt
+        </button>
+      </div>
+    `;
+  } else {
+    sfx.battleLose();
+    attacker.battlesLost++;
+    defender.battlesWon++;
+
+    logEvent(`💥 <strong>${attacker.name}</strong> tabte slaget ved <strong>${tile.name}</strong> og betaler ${formatDKK(penaltyRent)} i krigsskadeserstatning!`, "text-rose-700");
+
+    box.innerHTML = `
+      <div class="text-center py-2">
+        <div class="text-5xl mb-3">🛡️</div>
+        <h3 class="font-display text-2xl font-extrabold text-rose-400">SLAGET ER TABT!</h3>
+        <p class="text-sm text-stone-200 mt-2 mb-6">
+          <strong>${defender.name}</strong> slog dit angreb tilbage! Du må betale <strong class="text-rose-400">${formatDKK(penaltyRent)}</strong> (1,5x leje) i erstatning.
+        </p>
+        <button id="btn-close-battle" class="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-sm">
+          Betal erstatning (${formatDKK(penaltyRent)})
+        </button>
+      </div>
+    `;
+  }
+
+  document.getElementById("btn-close-battle").onclick = () => {
+    modal.classList.add("hidden");
+    if (!attackerWon) {
+      transferMoney(attacker, defender, penaltyRent, `betalte krigsskadeserstatning til ${defender.name}`);
+    } else {
+      updateUI();
+    }
+  };
+}
+
+/**
+ * ============================================================================
+ * 10. BEGIVENHEDSKORT & BETALINGER
+ * ============================================================================
+ */
+function drawEventCard(player, deckName) {
+  const matching = CUSTOM_EVENT_CARDS.filter(c => c.deck === deckName);
+  const pool = matching.length > 0 ? matching : CUSTOM_EVENT_CARDS;
+  const card = pool[Math.floor(Math.random() * pool.length)];
+
+  const modal = document.getElementById("action-modal");
+  const box = document.getElementById("action-modal-box");
+
+  box.innerHTML = `
+    <div class="inline-block px-3 py-1 rounded-full bg-red-700 text-white text-xs font-extrabold uppercase tracking-wider mb-2">
+      ${card.deck}
+    </div>
+    <div class="text-5xl my-2">${card.icon}</div>
+    <h3 class="font-display text-xl font-black text-slate-900 mb-2">${card.title}</h3>
+    <p class="text-sm text-slate-700 leading-relaxed mb-6">${card.text}</p>
+    <button id="btn-accept-card" class="w-full py-3 rounded-xl bg-red-700 hover:bg-red-600 text-white font-extrabold text-sm transition">
+      Udfør kortets effekt
+    </button>
+  `;
+
+  modal.classList.remove("hidden");
+
+  document.getElementById("btn-accept-card").onclick = () => {
+    modal.classList.add("hidden");
+    executeCardEffect(player, card);
+  };
+}
+
+function executeCardEffect(player, card) {
+  logEvent(`🃏 <strong>${player.name}</strong> trak <em>"${card.title}"</em>: ${card.text}`, "text-amber-900");
+
+  switch (card.action) {
+    case "money":
+      if (card.amount >= 0) {
+        player.money += card.amount;
+        sfx.coin();
+      } else {
+        payToPot(player, Math.abs(card.amount));
+      }
+      updateUI();
+      break;
+
+    case "move_rel":
+      state.isAnimating = true;
+      updateUI();
+      movePlayerSteps(player, card.steps, () => {
+        state.isAnimating = false;
+        updateUI();
+        resolveTileLanding(player);
+      });
+      break;
+
+    case "move_to": {
+      const stepsForward = (card.targetIndex - player.pos + BOARD_TILES.length) % BOARD_TILES.length;
+      state.isAnimating = true;
+      updateUI();
+      movePlayerSteps(player, stepsForward, () => {
+        state.isAnimating = false;
+        updateUI();
+        resolveTileLanding(player);
+      });
+      break;
+    }
+
+    case "jail":
+      sendToJail(player);
+      break;
+
+    case "skip_turn":
+      player.skipNextTurn = true;
+      updateUI();
+      break;
+
+    case "home_bonus": {
+      const homeProps = BOARD_TILES.filter(
+        t => t.zone === player.faction && state.ownership[t.id]?.owner === player.id
+      ).length;
+      const total = homeProps * card.perProp;
+      player.money += total;
+      if (total > 0) sfx.coin();
+      logEvent(`📣 <strong>${player.name}</strong> ejer ${homeProps} grunde i sin hjemby og modtog <strong>${formatDKK(total)}</strong>!`, "text-emerald-700");
+      updateUI();
+      break;
+    }
+
+    case "repair": {
+      let totalLevels = 0;
+      BOARD_TILES.forEach(t => {
+        const own = state.ownership[t.id];
+        if (own && own.owner === player.id) totalLevels += own.level;
+      });
+      const cost = totalLevels * card.perTower;
+      if (cost > 0) payToPot(player, cost);
+      updateUI();
+      break;
+    }
+  }
+}
+
+function transferMoney(fromPlayer, toPlayer, amount, reasonText) {
+  fromPlayer.money -= amount;
+  toPlayer.money += amount;
+  sfx.pay();
+  logEvent(`💸 <strong>${fromPlayer.name}</strong> ${reasonText} (<strong>${formatDKK(amount)}</strong>).`, "text-rose-700");
+  updateUI();
+  checkBankruptcy(fromPlayer, toPlayer);
+}
+
+function payToPot(player, amount) {
+  player.money -= amount;
+  state.freeParkingPot += amount;
+  sfx.pay();
+  updateUI();
+  checkBankruptcy(player, state.players[1 - player.id]);
+}
+
+function getTotalLiquidationValue(player) {
+  let houseValue = 0;
+  BOARD_TILES.forEach(t => {
+    const own = state.ownership[t.id];
+    if (own && own.owner === player.id && own.level > 0) {
+      houseValue += own.level * Math.floor(t.buildCost / 2);
+    }
+  });
+  return player.money + houseValue;
+}
+
+function checkBankruptcy(player, winner) {
+  if (player.money >= 0) return false;
+  if (getTotalLiquidationValue(player) < 0) {
+    triggerVictory(winner, player);
+    return true;
+  } else {
+    showSimpleModal(
+      "⚠️ Du er i minus!",
+      `Din kassebeholdning er på <strong class="text-rose-700">${formatDKK(player.money)}</strong>! Åbn dine skødekort og sælg huse for at komme i plus, inden du afslutter turen.`
+    );
+    return false;
+  }
+}
+
+function endTurn() {
+  if (state.isAnimating || state.gameOver) return;
+  const currentP = state.players[state.currentPlayer];
+
+  if (currentP.money < 0) {
+    if (!checkBankruptcy(currentP, state.players[1 - currentP.id])) return;
+  }
+
+  state.currentPlayer = 1 - state.currentPlayer;
+  if (state.currentPlayer === 0) state.turnCount++;
+
+  state.hasRolled = false;
+  state.doublesCount = 0;
+  state.battleUsedThisTurn = false;
+
+  const nextP = state.players[state.currentPlayer];
+  if (nextP.skipNextTurn) {
+    nextP.skipNextTurn = false;
+    state.hasRolled = true;
+    logEvent(`⏳ <strong>${nextP.name}</strong> sidder fast og springer denne tur over!`, "text-amber-800");
+    showSimpleModal("⏳ Springer tur over!", `${nextP.name} sidder fast i trafikken og står over i denne runde.`);
+  }
+
+  updateUI();
+}
+
+function triggerVictory(winner, loser) {
+  state.gameOver = true;
+  sfx.victoryFanfare();
+  updateUI();
+
+  const calculateNetWorth = (p) => {
+    let worth = Math.max(0, p.money);
+    BOARD_TILES.forEach(t => {
+      const own = state.ownership[t.id];
+      if (own && own.owner === p.id) {
+        worth += t.price + (own.level * (t.buildCost || 0));
+      }
+    });
+    return worth;
+  };
+
+  const getMostExpensiveProp = (p) => {
+    const owned = BOARD_TILES.filter(t => state.ownership[t.id]?.owner === p.id);
+    if (owned.length === 0) return "Ingen";
+    owned.sort((a, b) => b.price - a.price);
+    return owned[0].name;
+  };
+
+  const modal = document.getElementById("victory-modal");
+  const box = document.getElementById("victory-modal-box");
+
+  box.innerHTML = `
+    <div class="text-6xl mb-3">👑</div>
+    <div class="text-xs font-extrabold uppercase tracking-widest text-red-700">Slaget om Sjælland er afgjort!</div>
+    <h2 class="font-display text-3xl sm:text-4xl font-black text-slate-900 mt-2">
+      ${winner.avatar} ${winner.name} Sejrer!
+    </h2>
+    <p class="text-sm text-slate-600 mt-2">
+      <strong>${loser.name}</strong> er gået bankerot, og <strong>${winner.factionLabel}</strong> hersker nu over hele Sjælland!
+    </p>
+
+    <div class="rounded-2xl bg-stone-100 border border-stone-300 p-4 my-6 text-left text-xs space-y-2.5">
+      <div class="font-extrabold text-red-800 uppercase tracking-wider border-b border-stone-300 pb-1">Kampstatistik (${state.turnCount} runder)</div>
+      <div class="flex justify-between"><span class="text-slate-600">Samlet formue (${winner.name}):</span><strong class="text-emerald-700">${formatDKK(calculateNetWorth(winner))}</strong></div>
+      <div class="flex justify-between"><span class="text-slate-600">Vundne slag (${winner.name} vs ${loser.name}):</span><strong class="text-slate-900">${winner.battlesWon} vs. ${loser.battlesWon}</strong></div>
+      <div class="flex justify-between"><span class="text-slate-600">Kronjuvel (${winner.name}):</span><strong class="text-amber-700">${getMostExpensiveProp(winner)}</strong></div>
+    </div>
+
+    <button onclick="location.reload()" class="w-full py-3.5 rounded-2xl bg-red-700 hover:bg-red-600 text-white font-extrabold text-base shadow-lg border-2 border-amber-300 transition">
+      🔄 SPIL IGEN
+    </button>
+  `;
+
+  modal.classList.remove("hidden");
+}
+
+function showSimpleModal(title, htmlText, onClose = null) {
+  const modal = document.getElementById("action-modal");
+  const box = document.getElementById("action-modal-box");
+
+  box.innerHTML = `
+    <h3 class="font-display text-xl font-black text-red-800 mb-2">${title}</h3>
+    <p class="text-sm text-slate-700 leading-relaxed mb-6">${htmlText}</p>
+    <button id="btn-simple-ok" class="w-full py-3 rounded-xl bg-red-700 hover:bg-red-600 text-white font-extrabold text-sm">
+      Forstået
+    </button>
+  `;
+
+  modal.classList.remove("hidden");
+  document.getElementById("btn-simple-ok").onclick = () => {
+    modal.classList.add("hidden");
+    if (onClose) onClose();
+  };
+}
+
+/**
+ * ============================================================================
+ * 11. OPSTART AF 3D-SCENE & EVENT LISTENERS
+ * ============================================================================
+ */
+window.onload = function () {
+  init3DScene();
+  animate3DLoop();
+  updateUI();
+
+  document.getElementById("btn-roll").onclick = handleRollDice;
+  document.getElementById("btn-roll-jail").onclick = handleJailRoll;
+  document.getElementById("btn-pay-jail").onclick = handlePayJail;
+  document.getElementById("btn-end-turn").onclick = endTurn;
+
+  document.getElementById("btn-zoom-in").onclick = () => setZoom(-2.4);
+  document.getElementById("btn-zoom-out").onclick = () => setZoom(2.4);
+  document.getElementById("btn-top-view").onclick = () => {
+    threeState.camOrbit.isTopView = !threeState.camOrbit.isTopView;
+    threeState.camOrbit.theta = 0;
+    threeState.camOrbit.phi = threeState.camOrbit.isTopView ? 0.16 : 0.66;
+    updateCameraPosition();
+  };
+
+  document.getElementById("btn-toggle-log").onclick = () => toggleLogDrawer();
+
+  document.querySelectorAll(".speed-btn").forEach(btn => {
+    btn.onclick = () => {
+      state.speedMultiplier = Number(btn.dataset.speed);
+      document.querySelectorAll(".speed-btn").forEach(b => {
+        b.className = "speed-btn px-2 py-1 rounded-lg text-[11px] font-bold text-stone-300 hover:text-white transition";
+      });
+      btn.className = "speed-btn px-2 py-1 rounded-lg text-[11px] font-bold bg-amber-400 text-stone-950 transition";
+    };
+  });
+
+  document.querySelectorAll(".avatar-btn-0").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".avatar-btn-0").forEach(b => b.className = "avatar-btn-0 p-2 rounded-lg bg-white border border-slate-300 text-lg");
+      btn.className = "avatar-btn-0 p-2 rounded-lg bg-sky-200 border-2 border-sky-600 text-lg";
+      state.players[0].avatar = btn.dataset.avatar;
+      state.players[0].modelType = btn.dataset.model;
+      rebuildPlayerPawns3D();
+    };
+  });
+
+  document.querySelectorAll(".avatar-btn-1").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".avatar-btn-1").forEach(b => b.className = "avatar-btn-1 p-2 rounded-lg bg-white border border-slate-300 text-lg");
+      btn.className = "avatar-btn-1 p-2 rounded-lg bg-rose-200 border-2 border-rose-600 text-lg";
+      state.players[1].avatar = btn.dataset.avatar;
+      state.players[1].modelType = btn.dataset.model;
+      rebuildPlayerPawns3D();
+    };
+  });
+
+  document.getElementById("btn-start-game").onclick = () => {
+    const n0 = document.getElementById("input-p0-name").value.trim();
+    const n1 = document.getElementById("input-p1-name").value.trim();
+    if (n0) state.players[0].name = n0;
+    if (n1) state.players[1].name = n1;
+
+    rebuildPlayerPawns3D();
+    sfx.init();
+    sfx.battleWin();
+    document.getElementById("setup-modal").classList.add("hidden");
+    logEvent(`⚔️ Slaget er begyndt! <strong>${state.players[0].name}</strong> (Greve) møder <strong>${state.players[1].name}</strong> (Hillerød)!`, "text-red-800");
+    updateUI();
+  };
+
+  const soundBtn = document.getElementById("btn-sound");
+  soundBtn.onclick = () => {
+    sfx.muted = !sfx.muted;
+    soundBtn.textContent = sfx.muted ? "🔇" : "🔊";
+  };
+
+  document.getElementById("btn-rules").onclick = () => {
+    document.getElementById("rules-modal").classList.remove("hidden");
+  };
+  document.getElementById("btn-close-rules").onclick = () => {
+    document.getElementById("rules-modal").classList.add("hidden");
+  };
+};
+</script>
+</body>
+</html>
