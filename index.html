@@ -203,7 +203,7 @@
       <button onclick="closeInspectorDrawer()" class="w-7 h-7 rounded-full bg-stone-200 hover:bg-stone-300 text-slate-700 font-bold text-xs flex items-center justify-center">✕</button>
     </div>
     <div id="inspector-content" class="text-xs text-slate-700">
-      <p class="text-slate-400 py-4 text-center">Klik på et felt på 3D-banen for at se skødekort og bygge huse.</p>
+      <p class="text-slate-400 py-4 text-center">Klik på et felt på 3D-banen for at se skødekort, bygge huse eller pantsætte.</p>
     </div>
   </aside>
 
@@ -240,7 +240,7 @@
       </div>
 
       <!-- Handlingsknapper -->
-      <div class="shrink-0 flex items-center gap-2">
+      <div id="bottom-controls-area" class="shrink-0 flex items-center gap-2">
         <button id="btn-roll" class="py-2.5 px-4 sm:px-5 rounded-2xl bg-red-700 hover:bg-red-600 text-white font-extrabold text-xs sm:text-sm tracking-wide shadow-lg border-2 border-amber-300 transition transform active:scale-95">
           🎲 KAST TERNINGER
         </button>
@@ -334,14 +334,18 @@
         <button id="btn-close-rules" class="px-3 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-sm">Luk ✕</button>
       </div>
       <div class="space-y-3 text-sm leading-relaxed">
+        <div class="p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950">
+          <strong>🏆 Sådan vinder du spillet:</strong><br>
+          Målet er at tvinge din modstander i <strong>bankerot</strong>! Når den ene spiller ender i minus og ikke længere kan rejse nok penge ved at sælge huse eller pantsætte sine grunde, vinder den anden spiller hele <em>Slaget om Sjælland</em>.
+        </div>
         <p><strong>1. Sådan navigerer du rundt på 3D-banen:</strong><br>
         • <strong>Drej kameraet:</strong> Træk med venstre musetast eller én finger på skærmen.<br>
         • <strong>Zoom ind og ud:</strong> Brug musehjulet, knapperne <strong>＋ / －</strong> øverst eller knib med to fingre.<br>
-        • <strong>Se kort & felter:</strong> Klik på <em>"Se kort"</em> under <strong>Greve</strong> (åbner i venstre side) eller <strong>Hillerød</strong> (åbner i højre side), eller klik direkte på felterne og 3D-kortbunkerne på pladen.</p>
+        • <strong>Se kort & felter:</strong> Klik på <em>"Se kort"</em> under <strong>Greve</strong> (venstre side) eller <strong>Hillerød</strong> (højre side), eller klik direkte på felterne på pladen.</p>
         <p><strong>2. Start & S-toget:</strong> Hver spiller starter med <span class="text-emerald-700 font-bold">30.000 kr.</span> Passerer eller lander du på START (felt 0), modtager du <span class="text-emerald-700 font-bold">4.000 kr.</span></p>
-        <p><strong>3. Skøder, 3D-Huse & 3D-Slotte:</strong> Saml alle grunde i samme farvegruppe for monopol (dobbelt grundleje) og byg op til <span class="text-amber-700 font-bold">3 huse</span> samt et <span class="text-red-700 font-bold">Slot / Badehotel</span>.</p>
+        <p><strong>3. Skøder, 3D-Huse & Pantsætning:</strong> Saml alle grunde i samme farvegruppe for monopol (dobbelt grundleje) og byg op til <span class="text-amber-700 font-bold">3 huse</span> samt et <span class="text-red-700 font-bold">Slot / Badehotel</span>. Har du brug for kontanter, kan du <strong>pantsætte</strong> ubebyggede grunde for halvdelen af købsprisen (og indløse dem igen senere med 10 % rente). Pantsatte grunde opkræver ikke husleje.</p>
         <p><strong class="text-red-800">4. SLAG-MEKANIKKEN:</strong><br>
-        Lander du på modstanderens grund, kan du betale lejen – ELLER <strong>Erklære Slag om feltet</strong>. Forsvarer man en grund i sin egen hjemby (Greve eller Hillerød), får man hjemmebanefordel!</p>
+        Lander du på modstanderens grund (som ikke er pantsat eller har fuldt Slot), kan du betale lejen – ELLER <strong>Erklære Slag om feltet</strong>. Forsvarer man en grund i sin egen hjemby (Greve eller Hillerød), får man hjemmebanefordel!</p>
       </div>
     </div>
   </div>
@@ -365,7 +369,7 @@ const CUSTOM_EVENT_CARDS = [
   { deck: "Slagets Gang", icon: "🚗", title: "Myldretid på Køge Bugt Motorvejen", text: "Du sidder bomstille i kø ved Greve Nord i myldretiden! Spring din næste tur over.", action: "skip_turn" },
   { deck: "Slagets Gang", icon: "📣", title: "Lokal Opbakning!", text: "Borgerne i din egen hjemby samler ind til krigskassen! Modtag 700 kr. for hver grund, du ejer i din hjemby.", action: "home_bonus", perProp: 700 },
   { deck: "Slagets Gang", icon: "🏰", title: "Fremrykning mod Frederiksborg Slot", text: "Dine tropper marcherer direkte mod Frederiksborg Slot! Ryk frem til felt 31.", action: "move_to", targetIndex: 31 },
-  { deck: "Slagets Gang", icon: "🏖️", title: "Strandhugst ved Køge Bugt", text: "En hurtig landgangsoperation sender dig direkte til Køge Bugt Strandpark VIP! Ryk frem til felt 29.", action: "move_to", targetIndex: 29 },
+  { deck: "Slagets Gang", icon: "🏊", title: "Svømmetur i Greve Svømmehal", text: "En hurtig svømmetur giver fornyet energi! Ryk direkte frem til Greve Svømmehal (felt 29).", action: "move_to", targetIndex: 29 },
 
   { deck: "Prøv Lykken", icon: "🛍️", title: "Shoppingtur i SlotsArkaderne", text: "Du gik lidt for amok på udsalg i SlotsArkaderne i Hillerød. Betal 1.600 kr.", action: "money", amount: -1600 },
   { deck: "Prøv Lykken", icon: "🎭", title: "Udsolgt Show i Portalen", text: "Dit gallashow i Portalen i Greve er totalt udsolgt! Modtag 2.200 kr. i billetindtægter.", action: "money", amount: 2200 },
@@ -379,7 +383,7 @@ const CUSTOM_EVENT_CARDS = [
 
 /**
  * ============================================================================
- * 2. DE 32 CIRKULÆRE KILE-FELTER
+ * 2. DE 32 CIRKULÆRE KILE-FELTER (OPDATEREDE BYNAVNE & LILLA FARVEGRUPPE)
  * ============================================================================
  */
 const BOARD_TILES = [
@@ -391,26 +395,26 @@ const BOARD_TILES = [
   { id: 4,  type: "property", name: "Greve Midtby",           zone: "greve",   group: "lightblue", groupName: "Lyseblå",  color: "#0284c7", price: 1600, buildCost: 1000, rents: [200, 400, 950, 2100, 3800, 6000] },
   { id: 5,  type: "property", name: "Mosede Fort",            zone: "greve",   group: "lightblue", groupName: "Lyseblå",  color: "#0284c7", price: 1800, buildCost: 1000, rents: [220, 440, 1050, 2300, 4100, 6400] },
   { id: 6,  type: "tax",      name: "Byskat",                 zone: "neutral", icon: "💰", amount: 2000, desc: "Betal 2.000 kr. i lokal skat til midterpuljen." },
-  { id: 7,  type: "property", name: "Carlsbergvej",           zone: "hillerod",group: "lightblue", groupName: "Lyseblå",  color: "#0284c7", price: 2000, buildCost: 1000, rents: [250, 500, 1200, 2600, 4600, 7000] },
+  { id: 7,  type: "property", name: "Hillerød Stadion",       zone: "hillerod",group: "lightblue", groupName: "Lyseblå",  color: "#0284c7", price: 2000, buildCost: 1000, rents: [250, 500, 1200, 2600, 4600, 7000] },
 
   { id: 8,  type: "jail",     name: "Fængsel / P-bøde",       zone: "neutral", icon: "🅿️", desc: "På besøg er gratis. Fængslet? Slå to ens eller betal 1.000 kr." },
   { id: 9,  type: "property", name: "Karlslunde Strand",      zone: "greve",   group: "pink",      groupName: "Pink",     color: "#db2777", price: 2400, buildCost: 1500, rents: [300, 600, 1400, 3100, 5500, 8400] },
   { id: 10, type: "event",    name: "Slagets Gang",           zone: "neutral", icon: "⚔️", desc: "Træk et 'Slagets Gang'-kort!" },
-  { id: 11, type: "property", name: "Ullerød",                zone: "hillerod",group: "pink",      groupName: "Pink",     color: "#db2777", price: 2600, buildCost: 1500, rents: [330, 660, 1550, 3400, 5900, 9000] },
+  { id: 11, type: "property", name: "Batzkes Bakke",          zone: "hillerod",group: "pink",      groupName: "Pink",     color: "#db2777", price: 2600, buildCost: 1500, rents: [330, 660, 1550, 3400, 5900, 9000] },
 
-  { id: 12, type: "property", name: "Nyhuse",                 zone: "hillerod",group: "pink",      groupName: "Pink",     color: "#db2777", price: 2800, buildCost: 1500, rents: [360, 720, 1700, 3700, 6400, 9600] },
+  { id: 12, type: "property", name: "Gadevang",               zone: "hillerod",group: "pink",      groupName: "Pink",     color: "#db2777", price: 2800, buildCost: 1500, rents: [360, 720, 1700, 3700, 6400, 9600] },
   { id: 13, type: "property", name: "Tune",                   zone: "greve",   group: "orange",    groupName: "Orange",   color: "#ea580c", price: 3200, buildCost: 2000, rents: [400, 800, 1900, 4200, 7200, 11000] },
-  { id: 14, type: "property", name: "Christian 4. Vej",       zone: "hillerod",group: "orange",    groupName: "Orange",   color: "#ea580c", price: 3400, buildCost: 2000, rents: [430, 860, 2050, 4500, 7700, 11600] },
+  { id: 14, type: "property", name: "Jægermestervej",         zone: "hillerod",group: "orange",    groupName: "Orange",   color: "#ea580c", price: 3400, buildCost: 2000, rents: [430, 860, 2050, 4500, 7700, 11600] },
   { id: 15, type: "property", name: "Julemøllen",             zone: "hillerod",group: "orange",    groupName: "Orange",   color: "#ea580c", price: 3600, buildCost: 2000, rents: [460, 920, 2200, 4800, 8200, 12400] },
 
   { id: 16, type: "parking",  name: "Sommerhus på Kysten",    zone: "neutral", icon: "🏖️", desc: "Gratis helle! Lander du her, vinder du hele bødepuljen i midten." },
-  { id: 17, type: "property", name: "Portalen",               zone: "greve",   group: "red",       groupName: "Rød",      color: "#dc2626", price: 4200, buildCost: 2500, rents: [520, 1040, 2500, 5400, 9200, 14000] },
+  { id: 17, type: "property", name: "Portalen",               zone: "greve",   group: "purple",    groupName: "Lilla",    color: "#7c3aed", price: 4200, buildCost: 2500, rents: [520, 1040, 2500, 5400, 9200, 14000] },
   { id: 18, type: "event",    name: "Prøv Lykken",            zone: "neutral", icon: "🍀", desc: "Træk et 'Prøv Lykken'-kort!" },
-  { id: 19, type: "property", name: "Posen",                  zone: "hillerod",group: "red",       groupName: "Rød",      color: "#dc2626", price: 4500, buildCost: 2500, rents: [560, 1120, 2700, 5800, 9800, 15000] },
+  { id: 19, type: "property", name: "Posen",                  zone: "hillerod",group: "purple",    groupName: "Lilla",    color: "#7c3aed", price: 4500, buildCost: 2500, rents: [560, 1120, 2700, 5800, 9800, 15000] },
 
-  { id: 20, type: "property", name: "Torvet i Hillerød",      zone: "hillerod",group: "red",       groupName: "Rød",      color: "#dc2626", price: 4800, buildCost: 2500, rents: [600, 1200, 2900, 6200, 10500, 16000] },
+  { id: 20, type: "property", name: "Torvet i Hillerød",      zone: "hillerod",group: "purple",    groupName: "Lilla",    color: "#7c3aed", price: 4800, buildCost: 2500, rents: [600, 1200, 2900, 6200, 10500, 16000] },
   { id: 21, type: "property", name: "Greve Strand",           zone: "greve",   group: "yellow",    groupName: "Gul",      color: "#ca8a04", price: 5400, buildCost: 3000, rents: [680, 1360, 3300, 7000, 11800, 18000] },
-  { id: 22, type: "property", name: "Olsbækken",              zone: "greve",   group: "yellow",    groupName: "Gul",      color: "#ca8a04", price: 5700, buildCost: 3000, rents: [720, 1440, 3500, 7400, 12400, 19000] },
+  { id: 22, type: "property", name: "Waves",                  zone: "greve",   group: "yellow",    groupName: "Gul",      color: "#ca8a04", price: 5700, buildCost: 3000, rents: [720, 1440, 3500, 7400, 12400, 19000] },
   { id: 23, type: "property", name: "Gribskov",               zone: "hillerod",group: "yellow",    groupName: "Gul",      color: "#ca8a04", price: 6000, buildCost: 3000, rents: [760, 1520, 3700, 7800, 13200, 20000] },
 
   { id: 24, type: "gotojail", name: "Gå i Fængsel",           zone: "neutral", icon: "🚨", desc: "Ryk direkte til Fængslet uden at inkassere START-penge!" },
@@ -419,7 +423,7 @@ const BOARD_TILES = [
   { id: 27, type: "property", name: "Gågaden",                zone: "hillerod",group: "green",     groupName: "Grøn",     color: "#16a34a", price: 7200, buildCost: 3500, rents: [950, 1900, 4600, 9600, 16200, 24500] },
 
   { id: 28, type: "event",    name: "Slagets Gang",           zone: "neutral", icon: "⚔️", desc: "Træk et 'Slagets Gang'-kort!" },
-  { id: 29, type: "property", name: "Køge Bugt VIP",          zone: "greve",   group: "darkblue",  groupName: "Mørkeblå", color: "#1d4ed8", price: 8000, buildCost: 4000, rents: [1100, 2200, 5400, 11200, 18800, 28000] },
+  { id: 29, type: "property", name: "Greve Svømmehal",        zone: "greve",   group: "darkblue",  groupName: "Mørkeblå", color: "#1d4ed8", price: 8000, buildCost: 4000, rents: [1100, 2200, 5400, 11200, 18800, 28000] },
   { id: 30, type: "property", name: "Barokhaven",             zone: "hillerod",group: "darkblue",  groupName: "Mørkeblå", color: "#1d4ed8", price: 8000, buildCost: 4000, rents: [1150, 2300, 5600, 11600, 19400, 29000] },
   { id: 31, type: "property", name: "Frederiksborg Slot",     zone: "hillerod",group: "darkblue",  groupName: "Mørkeblå", color: "#1d4ed8", price: 8500, buildCost: 4000, rents: [1300, 2600, 6200, 12800, 21500, 32000] }
 ];
@@ -565,7 +569,8 @@ const state = {
   freeParkingPot: 2000,
   selectedTileId: null,
   gameOver: false,
-  speedMultiplier: 1
+  speedMultiplier: 1,
+  pendingDecision: null
 };
 
 function getStepDuration() {
@@ -584,7 +589,6 @@ function logEvent(msg, highlightClass = "text-slate-700") {
   logEl.prepend(entry);
 }
 
-// Hver spiller har sin egen kortskuffe i sin egen side (0 = venstre, 1 = højre)
 function togglePlayerDrawer(playerId) {
   const drawer = document.getElementById(`player-drawer-${playerId}`);
   const label = document.getElementById(`p${playerId}-drawer-label`);
@@ -630,7 +634,7 @@ function toggleLogDrawer(forceState = null) {
 
 /**
  * ============================================================================
- * 5. THREE.JS 3D-SCENE: HØJKONTRAST SPILLEPLADE, S-TOG, CENTER, SLOT & TERNINGER
+ * 5. THREE.JS 3D-SCENE: SPILLEPLADE, S-TOG, CENTER, SLOT & TERNINGER
  * ============================================================================
  */
 const BOARD_3D = {
@@ -695,10 +699,6 @@ const threeState = {
   clock: new THREE.Clock()
 };
 
-/**
- * Tegner spillepladens højkontrast-tekstur (varm pergament, mørk ramme, jernbanespor,
- * sø, emblem og mørkeblå fløjls-arena i midten så terninger og tekst er nemme at se)
- */
 function createSquareBoardTexture() {
   const size = 2048;
   const cx = size / 2;
@@ -708,7 +708,7 @@ function createSquareBoardTexture() {
   canvas.height = size;
   const ctx = canvas.getContext("2d");
 
-  // 1. Dyb skifer- og messing-bordplade i stedet for udvasket hvid
+  // 1. Dyb skifer- og messing-bordplade
   const bgGrad = ctx.createRadialGradient(cx, cy, 240, cx, cy, size * 0.72);
   bgGrad.addColorStop(0, "#334155");
   bgGrad.addColorStop(0.65, "#1e293b");
@@ -737,7 +737,7 @@ function createSquareBoardTexture() {
   const rBand = BOARD_3D.colorBandRadius * scale;
   const rInner = BOARD_3D.innerWedgeRadius * scale;
 
-  // 2. Cirkulær jernbaneskinne rundt om hele yderkanten af banen (til 3D S-toget!)
+  // 2. Cirkulær jernbaneskinne rundt om hele yderkanten af banen
   const rTrack = (BOARD_3D.outerRadius + 0.48) * scale;
   ctx.beginPath();
   ctx.arc(cx, cy, rTrack, 0, Math.PI * 2);
@@ -745,7 +745,6 @@ function createSquareBoardTexture() {
   ctx.lineWidth = 34;
   ctx.stroke();
 
-  // Sveller på jernbanen
   for (let s = 0; s < 140; s++) {
     const ang = (s / 140) * Math.PI * 2;
     ctx.save();
@@ -755,7 +754,6 @@ function createSquareBoardTexture() {
     ctx.fillRect(-16, -4, 32, 8);
     ctx.restore();
   }
-  // To blanke stålskinner
   [-10, 10].forEach(offset => {
     ctx.beginPath();
     ctx.arc(cx, cy, rTrack + offset, 0, Math.PI * 2);
@@ -764,7 +762,7 @@ function createSquareBoardTexture() {
     ctx.stroke();
   });
 
-  // 3. Tegn de 32 kile-felter i varmt pergament med tydelig mørk typografi
+  // 3. Tegn de 32 kile-felter
   BOARD_TILES.forEach((tile, i) => {
     const startRad = BOARD_3D.startAngleOffset + i * BOARD_3D.angleStep;
     const endRad = startRad + BOARD_3D.angleStep;
@@ -834,16 +832,12 @@ function createSquareBoardTexture() {
       ctx.stroke();
     }
 
-    // Tekst / pris / ikon i kilen
+    // Tekst / pris / ikon i kilen — ALLE byer vender samme vej (radialt ind mod centrum)
     const textR = tile.type === "property" ? rInner + 148 : rInner + 158;
     const tx = cx + textR * Math.cos(midRad);
     const ty = cy + textR * Math.sin(midRad);
 
-    let rot = midRad + Math.PI / 2;
-    const norm = ((midRad % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-    if (norm > 0 && norm < Math.PI) {
-      rot = midRad - Math.PI / 2;
-    }
+    const rot = midRad + Math.PI / 2;
 
     ctx.save();
     ctx.translate(tx, ty);
@@ -917,7 +911,7 @@ function createSquareBoardTexture() {
     ctx.restore();
   });
 
-  // 5. Midter-ø i varm sand/stenfarve med mørk kontrast
+  // 5. Midter-ø
   ctx.beginPath();
   ctx.arc(cx, cy, rIsland, 0, Math.PI * 2);
   ctx.fillStyle = "#e7e5e4";
@@ -950,7 +944,7 @@ function createSquareBoardTexture() {
   ctx.fillText("SJÆLLAND", 0, 90);
   ctx.restore();
 
-  // Mørkeblå fløjls-arena med guldkant til de hvide 3D-terninger (så de står knivskarpt!)
+  // Mørkeblå fløjls-arena med guldkant til de hvide 3D-terninger
   ctx.beginPath();
   ctx.arc(cx, cy + 135, 162, 0, Math.PI * 2);
   ctx.fillStyle = "#1e293b";
@@ -1081,9 +1075,6 @@ function getEulerForDieValue(val) {
   }
 }
 
-/**
- * Bygger sej 3D-spillerbrik
- */
 function create3DPawn(playerId, modelType) {
   const group = new THREE.Group();
   const teamColor = playerId === 0 ? 0x0284c7 : 0xe11d48;
@@ -1240,14 +1231,10 @@ function create3DBuilding(isCastle) {
   return group;
 }
 
-/**
- * Bygger 3D-landemærker: Kørende S-tog, Indkøbscenter ("Center"), Frederiksborg Slot,
- * Fyrtårn med roterende lyskegle og vindmøller!
- */
 function build3DLandmarks(boardGroup) {
   const y0 = BOARD_3D.boardHeight;
 
-  // 1. KØRENDE 3D S-TOG (3 vogne i rød & hvid med lysende vinduer og forlygte)
+  // 1. KØRENDE 3D S-TOG
   threeState.trainCars = [];
   const trainRed = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 });
   const trainWhite = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
@@ -1269,14 +1256,12 @@ function build3DLandmarks(boardGroup) {
     roof.position.y = 0.31;
     car.add(roof);
 
-    // Lysende vinduer på begge sider
     [-0.26, 0, 0.26].forEach(wz => {
       const win = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.08, 0.16), windowGlow);
       win.position.set(0, 0.21, wz);
       car.add(win);
     });
 
-    // Forlygte på forreste vogn
     if (c === 0) {
       const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), windowGlow);
       lamp.position.set(0, 0.16, 0.47);
@@ -1287,7 +1272,7 @@ function build3DLandmarks(boardGroup) {
     threeState.trainCars.push(car);
   }
 
-  // 2. STORT 3D INDKØBSCENTER ("CENTER") med glaskuppel, parkeringsplads & biler
+  // 2. INDKØBSCENTER ("CENTER")
   const centerGroup = new THREE.Group();
   const wallMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.45 });
   const trimMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.35 });
@@ -1309,12 +1294,10 @@ function build3DLandmarks(boardGroup) {
   roofTrim.position.y = 0.58;
   centerGroup.add(roofTrim);
 
-  // Glaskuppel på taget
   const dome = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), glassDomeMat);
   dome.position.y = 0.6;
   centerGroup.add(dome);
 
-  // "CENTER"-skilt på taget
   const signCanvas = document.createElement("canvas");
   signCanvas.width = 256;
   signCanvas.height = 64;
@@ -1337,7 +1320,6 @@ function build3DLandmarks(boardGroup) {
   signMesh.position.set(-0.75, 0.76, 0);
   centerGroup.add(signMesh);
 
-  // Parkeringsplads foran centeret med 3 små biler
   const lot = new THREE.Mesh(
     new THREE.BoxGeometry(0.85, 0.03, 2.2),
     new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 })
@@ -1388,7 +1370,7 @@ function build3DLandmarks(boardGroup) {
   castleGroup.position.set(0, y0, -3.55);
   boardGroup.add(castleGroup);
 
-  // 4. FYRTÅRN VED SØEN MED ROTERENDE LYSKEGLE
+  // 4. FYRTÅRN VED SØEN
   const lhGroup = new THREE.Group();
   const lhBase = new THREE.Mesh(
     new THREE.CylinderGeometry(0.16, 0.24, 0.72, 14),
@@ -1429,7 +1411,7 @@ function build3DLandmarks(boardGroup) {
   lhGroup.position.set(-4.35, y0, 4.35);
   boardGroup.add(lhGroup);
 
-  // 5. TO ROTERENDE VINDMØLLER VED KYSTEN
+  // 5. TO ROTERENDE VINDMØLLER
   threeState.windmillRotors = [];
   [[-10.4, 3.2], [-10.4, -3.2]].forEach(([wx, wz]) => {
     const wm = new THREE.Group();
@@ -1472,9 +1454,6 @@ function get3DTileCoords(tileIndex, playerOffsetIndex = 0) {
   };
 }
 
-/**
- * Initialiserer hele 3D-scenen
- */
 function init3DScene() {
   const container = document.getElementById("three-container");
   const width = container.clientWidth || window.innerWidth;
@@ -1565,7 +1544,6 @@ function init3DScene() {
     boardGroup.add(tree);
   }
 
-  // Lille 3D-færge i søen
   const ferry = new THREE.Group();
   const ferryHull = new THREE.Mesh(
     new THREE.BoxGeometry(0.32, 0.14, 0.62),
@@ -1609,7 +1587,7 @@ function init3DScene() {
     threeState.interactiveProps.push(deckMesh);
   });
 
-  // 6. Usynlige klik-kiler (til Raycasting ved hover & klik på felter)
+  // 6. Usynlige klik-kiler
   threeState.wedgeHitMeshes = [];
   BOARD_TILES.forEach((tile, i) => {
     const startRad = BOARD_3D.startAngleOffset + i * BOARD_3D.angleStep;
@@ -1654,7 +1632,7 @@ function init3DScene() {
   boardGroup.add(hoverMesh);
   threeState.hoverRing = hoverMesh;
 
-  // Valgt felt-markering (gylden glød)
+  // Valgt felt-markering
   const selGeo = hoverGeo.clone();
   const selMesh = new THREE.Mesh(
     selGeo,
@@ -1669,7 +1647,7 @@ function init3DScene() {
   boardGroup.add(housesGroup);
   threeState.housesGroup = housesGroup;
 
-  // 7. De to 3D-terninger på den mørkeblå arena i midter-øen
+  // 7. De to 3D-terninger på arenaen i midter-øen
   const die1 = create3DDie();
   const die2 = create3DDie();
   die1.position.set(-0.9, BOARD_3D.boardHeight + 0.46, 1.5);
@@ -1762,7 +1740,9 @@ function setup3DInteractions(domEl) {
 
       const own = state.ownership[tile.id];
       const subText = tile.type === "property"
-        ? (own !== undefined ? `Ejes af ${state.players[own.owner].name} • Leje: ${formatDKK(calculateRent(tile.id))}` : `Ledig grund • Pris: ${formatDKK(tile.price)}`)
+        ? (own !== undefined
+            ? (own.mortgaged ? `PANTSAT • Ejes af ${state.players[own.owner].name}` : `Ejes af ${state.players[own.owner].name} • Leje: ${formatDKK(calculateRent(tile.id))}`)
+            : `Ledig grund • Pris: ${formatDKK(tile.price)}`)
         : "Klik for at se detaljer";
 
       tooltipTitle.textContent = `#${tile.id} ${tile.name}`;
@@ -1812,7 +1792,6 @@ function setup3DInteractions(domEl) {
 
       threeState.raycaster.setFromCamera(threeState.mouseNDC, threeState.camera);
 
-      // 1. Klik på felt på banen
       const tileHits = threeState.raycaster.intersectObjects(threeState.wedgeHitMeshes);
       if (tileHits.length > 0) {
         const tileId = tileHits[0].object.userData.tileId;
@@ -1822,7 +1801,6 @@ function setup3DInteractions(domEl) {
         }
       }
 
-      // 2. Klik på 3D-kortbunkerne på pladen
       const deckHits = threeState.raycaster.intersectObjects(threeState.interactiveProps);
       if (deckHits.length > 0) {
         const cfg = deckHits[0].object.userData.deckConfig;
@@ -1909,7 +1887,7 @@ function render3DBuildingsAndOwnership() {
     );
     ownerArcGeo.rotateX(-Math.PI / 2);
     const ownerArcMat = new THREE.MeshBasicMaterial({
-      color: own.owner === 0 ? 0x0284c7 : 0xe11d48,
+      color: own.mortgaged ? 0x64748b : (own.owner === 0 ? 0x0284c7 : 0xe11d48),
       side: THREE.DoubleSide
     });
     const ownerArc = new THREE.Mesh(ownerArcGeo, ownerArcMat);
@@ -1954,9 +1932,6 @@ function triggerPawn3DHop(playerId) {
   vs.hopDuration = Math.max(0.12, getStepDuration() / 1000);
 }
 
-/**
- * Kaster de to 3D-terninger hen over arenaen UDEN at kameraet zoomer ind!
- */
 function roll3DDiceAnimation(d1, d2, onComplete) {
   const anim = threeState.diceAnim;
   anim.active = true;
@@ -1989,7 +1964,7 @@ function animate3DLoop() {
   const dt = Math.min(threeState.clock.getDelta(), 0.05);
   const elapsedTotal = threeState.clock.elapsedTime;
 
-  // 1. Lille 3D-færge der sejler rundt i sø-ringen
+  // 1. Færge i søen
   if (threeState.ferryMesh) {
     threeState.ferryAngle += dt * 0.14;
     const rFerry = 5.45;
@@ -1999,7 +1974,7 @@ function animate3DLoop() {
     threeState.ferryMesh.rotation.y = -threeState.ferryAngle;
   }
 
-  // 2. Kørende 3D S-tog på yderkanten af banen
+  // 2. Kørende S-tog
   if (threeState.trainCars.length > 0) {
     threeState.trainAngle -= dt * 0.24;
     const rTrack = BOARD_3D.outerRadius + 0.48;
@@ -2012,7 +1987,7 @@ function animate3DLoop() {
     });
   }
 
-  // 3. Fyrtårnets roterende lyskegle & vindmøllernes vinger
+  // 3. Fyrtårn & vindmøller
   if (threeState.lighthouseBeam) {
     threeState.lighthouseBeam.rotation.y += dt * 1.4;
   }
@@ -2020,12 +1995,12 @@ function animate3DLoop() {
     rotor.rotation.x += dt * (2.1 + i * 0.25);
   });
 
-  // 4. Pulserende 3D-markering på valgt kile
+  // 4. Pulserende valgt kile
   if (threeState.selectionRing && state.selectedTileId !== null) {
     threeState.selectionRing.material.opacity = 0.28 + Math.sin(elapsedTotal * 4) * 0.12;
   }
 
-  // 5. 3D-brik hoppebue
+  // 5. Spillerbrikkernes hoppebue
   state.players.forEach((p, idx) => {
     const pawn = threeState.pawnMeshes[idx];
     const vs = threeState.pawnVisualState[idx];
@@ -2048,7 +2023,7 @@ function animate3DLoop() {
     }
   });
 
-  // 6. 3D-terningernes kast og hop hen over pladen (uden kamera-zoom!)
+  // 6. 3D-terningernes kast
   const anim = threeState.diceAnim;
   if (anim.active && threeState.dice[0] && threeState.dice[1]) {
     anim.elapsed += dt;
@@ -2115,7 +2090,7 @@ function animate3DLoop() {
 
 /**
  * ============================================================================
- * 6. UI-OPDATERING, SPILLER-SKUFFER & SKØDE-INSPEKTØR
+ * 6. UI-OPDATERING, SPILLER-SKUFFER & SKØDE-INSPEKTØR (INKL. PANTSÆTNING)
  * ============================================================================
  */
 function renderPlayerDrawer(playerId) {
@@ -2152,7 +2127,7 @@ function renderPlayerDrawer(playerId) {
     </div>
 
     <div class="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2">
-      Skødekort (klik for at bygge/se detaljer)
+      Skødekort (klik for at bygge/pantsætte)
     </div>
     <div class="grid grid-cols-2 gap-1.5">
       ${ownedTiles.length === 0
@@ -2160,16 +2135,16 @@ function renderPlayerDrawer(playerId) {
         : ownedTiles.map(t => {
             const ownInfo = state.ownership[t.id];
             const currentRent = calculateRent(t.id);
-            const bIcon = ownInfo.level === 4 ? "🏰" : (ownInfo.level > 0 ? "🏠".repeat(ownInfo.level) : "");
+            const bIcon = ownInfo.mortgaged ? "🏦" : (ownInfo.level === 4 ? "🏰" : (ownInfo.level > 0 ? "🏠".repeat(ownInfo.level) : ""));
             return `
-              <div onclick="inspectTile(${t.id}, true)" class="deed-card rounded-lg overflow-hidden cursor-pointer text-[10px]">
-                <div class="px-1.5 py-1 font-extrabold text-white truncate flex items-center justify-between" style="background:${t.color}">
+              <div onclick="inspectTile(${t.id}, true)" class="deed-card rounded-lg overflow-hidden cursor-pointer text-[10px] ${ownInfo.mortgaged ? 'opacity-70' : ''}">
+                <div class="px-1.5 py-1 font-extrabold text-white truncate flex items-center justify-between" style="background:${ownInfo.mortgaged ? '#64748b' : t.color}">
                   <span class="truncate drop-shadow-sm">${t.name}</span>
                   <span>${bIcon}</span>
                 </div>
                 <div class="p-1.5 bg-white text-slate-700 flex justify-between items-center">
-                  <span class="text-slate-400">Leje:</span>
-                  <strong class="text-slate-900">${formatDKK(currentRent)}</strong>
+                  <span class="text-slate-400">${ownInfo.mortgaged ? 'Pantsat' : 'Leje:'}</span>
+                  <strong class="text-slate-900">${ownInfo.mortgaged ? '0 kr.' : formatDKK(currentRent)}</strong>
                 </div>
               </div>
             `;
@@ -2221,7 +2196,23 @@ function updateUI() {
   const btnEnd = document.getElementById("btn-end-turn");
   const hint = document.getElementById("ui-turn-hint");
 
-  if (state.isAnimating || state.gameOver) {
+  // Fjern evt. tidligere "Tilbage til valg"-knap
+  const existingResumeBtn = document.getElementById("btn-resume-decision");
+  if (existingResumeBtn) existingResumeBtn.remove();
+
+  if (state.pendingDecision) {
+    btnRoll.classList.add("hidden");
+    jailControls.classList.add("hidden");
+    btnEnd.classList.add("hidden");
+    hint.textContent = `Du kigger på brættet (${state.pendingDecision.tile.name}) – klik her for at vende tilbage:`;
+
+    const resumeBtn = document.createElement("button");
+    resumeBtn.id = "btn-resume-decision";
+    resumeBtn.className = "py-2.5 px-4 sm:px-5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-extrabold text-xs sm:text-sm tracking-wide shadow-lg border-2 border-white transition transform active:scale-95 animate-pulse";
+    resumeBtn.textContent = "↩️ Tilbage til valg";
+    resumeBtn.onclick = resumePendingDecision;
+    document.getElementById("bottom-controls-area").appendChild(resumeBtn);
+  } else if (state.isAnimating || state.gameOver) {
     btnRoll.classList.add("hidden");
     jailControls.classList.add("hidden");
     btnEnd.classList.add("hidden");
@@ -2239,7 +2230,7 @@ function updateUI() {
     btnRoll.classList.add("hidden");
     jailControls.classList.add("hidden");
     btnEnd.classList.remove("hidden");
-    hint.textContent = "Klik på dine felter for at bygge huse eller afslut tur.";
+    hint.textContent = "Klik på dine felter for at bygge/pantsætte eller afslut tur.";
   }
 
   if (state.selectedTileId !== null && document.getElementById("inspector-drawer").classList.contains("open")) {
@@ -2250,13 +2241,13 @@ function updateUI() {
 function hasMonopoly(playerId, group) {
   if (!group) return false;
   const groupTiles = BOARD_TILES.filter(t => t.group === group);
-  return groupTiles.every(t => state.ownership[t.id]?.owner === playerId);
+  return groupTiles.every(t => state.ownership[t.id]?.owner === playerId && !state.ownership[t.id]?.mortgaged);
 }
 
 function calculateRent(tileId) {
   const tile = BOARD_TILES[tileId];
   const own = state.ownership[tileId];
-  if (!own || tile.type !== "property") return 0;
+  if (!own || tile.type !== "property" || own.mortgaged) return 0;
 
   if (own.level === 0) {
     return hasMonopoly(own.owner, tile.group) ? tile.rents[1] : tile.rents[0];
@@ -2308,18 +2299,23 @@ function inspectTile(tileId, openDrawer = true) {
     const currentRent = own ? calculateRent(tileId) : tile.rents[0];
     const canManage = own && own.owner === state.currentPlayer && !state.isAnimating && !state.gameOver;
     const mono = own && hasMonopoly(own.owner, tile.group);
+    const mortgageVal = Math.floor(tile.price / 2);
+    const unmortgageCost = Math.round(mortgageVal * 1.1);
 
     let buildButtons = "";
     if (canManage) {
       const p = state.players[state.currentPlayer];
-      const canBuild = mono && own.level < 4 && p.money >= tile.buildCost;
+      const canBuild = mono && !own.mortgaged && own.level < 4 && p.money >= tile.buildCost;
       const canSell = own.level > 0;
+      const canMortgage = !own.mortgaged && own.level === 0;
+      const canUnmortgage = own.mortgaged && p.money >= unmortgageCost;
       const nextLabel = own.level === 3 ? "Opgrader til 3D-Slot 🏰" : "Byg 1 3D-Hus 🏠";
 
       buildButtons = `
         <div class="mt-3 pt-2.5 border-t border-slate-200 space-y-1.5">
-          ${!mono ? `<p class="text-[11px] text-amber-700 font-medium">Saml alle ${tile.groupName}-skøder for at bygge 3D-huse.</p>` : ""}
-          ${mono && own.level < 4 ? `
+          ${own.mortgaged ? `<p class="text-[11px] text-amber-800 font-bold bg-amber-50 p-2 rounded-lg border border-amber-200">🏦 Grunden er pantsat. Der opkræves ingen husleje.</p>` : ""}
+          ${!mono && !own.mortgaged ? `<p class="text-[11px] text-amber-700 font-medium">Saml alle ${tile.groupName}-skøder for at bygge 3D-huse.</p>` : ""}
+          ${mono && !own.mortgaged && own.level < 4 ? `
             <button onclick="buildHouse(${tile.id})" ${!canBuild ? "disabled" : ""} class="w-full py-2 px-3 rounded-xl font-bold text-xs transition ${canBuild ? "bg-emerald-700 hover:bg-emerald-600 text-white shadow" : "bg-stone-200 text-stone-400 cursor-not-allowed"}">
               ${nextLabel} (${formatDKK(tile.buildCost)})
             </button>
@@ -2329,14 +2325,24 @@ function inspectTile(tileId, openDrawer = true) {
               Sælg 1 hus (+${formatDKK(Math.floor(tile.buildCost / 2))})
             </button>
           ` : ""}
+          ${canMortgage ? `
+            <button onclick="mortgageProperty(${tile.id})" class="w-full py-1.5 px-3 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs border border-amber-300 transition">
+              🏦 Pantsæt grund (+${formatDKK(mortgageVal)})
+            </button>
+          ` : ""}
+          ${own.mortgaged ? `
+            <button onclick="unmortgageProperty(${tile.id})" ${!canUnmortgage ? "disabled" : ""} class="w-full py-2 px-3 rounded-xl font-bold text-xs transition ${canUnmortgage ? "bg-sky-700 hover:bg-sky-600 text-white shadow" : "bg-stone-200 text-stone-400 cursor-not-allowed"}">
+              🔓 Indløs pant (-${formatDKK(unmortgageCost)})
+            </button>
+          ` : ""}
         </div>
       `;
     }
 
     container.innerHTML = `
       <div class="rounded-xl overflow-hidden border-2 border-slate-300 bg-white shadow-sm">
-        <div class="px-3 py-2 font-extrabold text-white flex items-center justify-between" style="background:${tile.color}">
-          <span class="drop-shadow-sm">${tile.name}</span>
+        <div class="px-3 py-2 font-extrabold text-white flex items-center justify-between" style="background:${own?.mortgaged ? '#64748b' : tile.color}">
+          <span class="drop-shadow-sm">${tile.name} ${own?.mortgaged ? '(PANTSAT)' : ''}</span>
           <span class="text-[10px] uppercase tracking-wider bg-black/25 px-2 py-0.5 rounded">${tile.groupName}</span>
         </div>
         <div class="p-3 space-y-2">
@@ -2346,7 +2352,7 @@ function inspectTile(tileId, openDrawer = true) {
           </div>
           <div class="text-xs text-slate-700">
             Ejer: <strong class="text-slate-900">${ownerPlayer ? `${ownerPlayer.avatar} ${ownerPlayer.name}` : "Ledig grund"}</strong>
-            ${own ? ` • Leje: <strong class="text-emerald-700">${formatDKK(currentRent)}</strong>` : ""}
+            ${own ? ` • Leje: <strong class="${own.mortgaged ? 'text-slate-400' : 'text-emerald-700'}">${own.mortgaged ? '0 kr. (Pantsat)' : formatDKK(currentRent)}</strong>` : ""}
           </div>
           <div class="bg-stone-50 rounded-lg p-2.5 text-[11px] space-y-1 border border-stone-200 text-slate-700">
             <div class="flex justify-between"><span>Grundleje:</span><strong>${formatDKK(tile.rents[0])}</strong></div>
@@ -2355,7 +2361,7 @@ function inspectTile(tileId, openDrawer = true) {
             <div class="flex justify-between"><span>2 Huse 🏠🏠:</span><strong>${formatDKK(tile.rents[3])}</strong></div>
             <div class="flex justify-between"><span>3 Huse 🏠🏠🏠:</span><strong>${formatDKK(tile.rents[4])}</strong></div>
             <div class="flex justify-between font-extrabold text-red-700 border-t border-stone-200 pt-1"><span>Slot / Badehotel 🏰:</span><span>${formatDKK(tile.rents[5])}</span></div>
-            <div class="flex justify-between text-[10px] text-slate-500 pt-0.5"><span>Pris pr. hus:</span><span>${formatDKK(tile.buildCost)}</span></div>
+            <div class="flex justify-between text-[10px] text-slate-500 pt-0.5"><span>Pris pr. hus / Pantsætning:</span><span>${formatDKK(tile.buildCost)} / ${formatDKK(mortgageVal)}</span></div>
           </div>
           ${buildButtons}
         </div>
@@ -2376,7 +2382,7 @@ function buildHouse(tileId) {
   const own = state.ownership[tileId];
   const p = state.players[state.currentPlayer];
 
-  if (!own || own.owner !== p.id || !hasMonopoly(p.id, tile.group)) return;
+  if (!own || own.owner !== p.id || own.mortgaged || !hasMonopoly(p.id, tile.group)) return;
   if (own.level >= 4 || p.money < tile.buildCost) return;
 
   p.money -= tile.buildCost;
@@ -2404,6 +2410,40 @@ function sellHouse(tileId) {
   updateUI();
 }
 
+function mortgageProperty(tileId) {
+  const tile = BOARD_TILES[tileId];
+  const own = state.ownership[tileId];
+  const p = state.players[state.currentPlayer];
+
+  if (!own || own.owner !== p.id || own.mortgaged || own.level > 0) return;
+
+  const mortgageVal = Math.floor(tile.price / 2);
+  own.mortgaged = true;
+  p.money += mortgageVal;
+  sfx.coin();
+
+  logEvent(`🏦 <strong>${p.name}</strong> pantsatte <strong>${tile.name}</strong> for <strong>${formatDKK(mortgageVal)}</strong>.`, "text-amber-800");
+  updateUI();
+}
+
+function unmortgageProperty(tileId) {
+  const tile = BOARD_TILES[tileId];
+  const own = state.ownership[tileId];
+  const p = state.players[state.currentPlayer];
+
+  if (!own || own.owner !== p.id || !own.mortgaged) return;
+
+  const unmortgageCost = Math.round(Math.floor(tile.price / 2) * 1.1);
+  if (p.money < unmortgageCost) return;
+
+  own.mortgaged = false;
+  p.money -= unmortgageCost;
+  sfx.pay();
+
+  logEvent(`🔓 <strong>${p.name}</strong> indløste panten på <strong>${tile.name}</strong> for <strong>${formatDKK(unmortgageCost)}</strong>.`, "text-sky-800");
+  updateUI();
+}
+
 /**
  * ============================================================================
  * 7. TERNINGEKAST (3D), HOPPENDE 3D-BRIKKER & FÆNGSEL
@@ -2417,7 +2457,7 @@ function rollTwoDice() {
 }
 
 function handleRollDice() {
-  if (state.isAnimating || state.hasRolled || state.gameOver) return;
+  if (state.isAnimating || state.hasRolled || state.gameOver || state.pendingDecision) return;
   const p = state.players[state.currentPlayer];
 
   closePlayerDrawer();
@@ -2459,7 +2499,7 @@ function handleRollDice() {
 }
 
 function handleJailRoll() {
-  if (state.isAnimating || state.gameOver) return;
+  if (state.isAnimating || state.gameOver || state.pendingDecision) return;
   const p = state.players[state.currentPlayer];
   closePlayerDrawer();
   closeInspectorDrawer();
@@ -2559,7 +2599,7 @@ function movePlayerSteps(player, steps, onComplete) {
 
 /**
  * ============================================================================
- * 8. LANDING PÅ FELTER, KØB, LEJE & SLAG
+ * 8. LANDING PÅ FELTER, KØB, LEJE & MULIGHED FOR AT SE BRÆTTET
  * ============================================================================
  */
 function resolveTileLanding(player) {
@@ -2621,7 +2661,32 @@ function resolveTileLanding(player) {
       return;
     }
 
+    if (own.mortgaged) {
+      logEvent(`🏦 <strong>${player.name}</strong> landede på <strong>${tile.name}</strong>, men grunden er pantsat – ingen husleje!`);
+      showSimpleModal("🏦 Grunden er pantsat!", `<strong>${tile.name}</strong> ejes af ${state.players[own.owner].name}, men er i øjeblikket pantsat i banken. Du slipper derfor helt for at betale husleje!`);
+      return;
+    }
+
     openRentOrBattleModal(player, tile, own);
+  }
+}
+
+function pauseModalForBoardView(decisionObj) {
+  state.pendingDecision = decisionObj;
+  document.getElementById("action-modal").classList.add("hidden");
+  updateUI();
+}
+
+function resumePendingDecision() {
+  const dec = state.pendingDecision;
+  if (!dec) return;
+  state.pendingDecision = null;
+  updateUI();
+
+  if (dec.type === "buy") {
+    openBuyModal(dec.player, dec.tile);
+  } else if (dec.type === "rent_or_battle") {
+    openRentOrBattleModal(dec.attacker, dec.tile, dec.own);
   }
 }
 
@@ -2632,8 +2697,18 @@ function openBuyModal(player, tile) {
   const box = document.getElementById("action-modal-box");
 
   box.innerHTML = `
-    <div class="inline-block px-3 py-1 rounded-full text-white text-xs font-extrabold mb-2" style="background:${tile.color}">
-      Ledigt Skøde • ${tile.groupName}
+    <div class="flex items-center justify-between mb-2">
+      <span class="px-3 py-1 rounded-full text-white text-xs font-extrabold" style="background:${tile.color}">
+        Ledigt Skøde • ${tile.groupName}
+      </span>
+      <div class="flex items-center gap-1.5">
+        <button id="modal-btn-peek" class="px-2 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-slate-700 text-xs font-bold border border-stone-300 transition" title="Skjul vinduet midlertidigt for at se hele spillepladen">
+          👀 Se brættet
+        </button>
+        <button onclick="pauseModalForBoardView({ type: 'buy', player, tile })" class="w-7 h-7 rounded-full bg-stone-200 hover:bg-stone-300 text-slate-700 font-bold text-xs flex items-center justify-center" title="Luk vindue midlertidigt">
+          ✕
+        </button>
+      </div>
     </div>
     <h3 class="font-display text-2xl font-black text-slate-900 mb-1">${tile.name}</h3>
     ${isHome ? `<div class="text-xs text-emerald-700 font-bold mb-2">✨ Dette er i din hjemby (${player.factionLabel})!</div>` : `<div class="mb-2"></div>`}
@@ -2654,15 +2729,22 @@ function openBuyModal(player, tile) {
 
   modal.classList.remove("hidden");
 
+  document.getElementById("modal-btn-peek").onclick = () => {
+    pauseModalForBoardView({ type: "buy", player, tile });
+  };
+
   document.getElementById("modal-btn-pass").onclick = () => {
+    state.pendingDecision = null;
     modal.classList.add("hidden");
     logEvent(`<strong>${player.name}</strong> valgte ikke at købe <strong>${tile.name}</strong>.`);
+    updateUI();
   };
 
   if (canAfford) {
     document.getElementById("modal-btn-buy").onclick = () => {
+      state.pendingDecision = null;
       player.money -= tile.price;
-      state.ownership[tile.id] = { owner: player.id, level: 0 };
+      state.ownership[tile.id] = { owner: player.id, level: 0, mortgaged: false };
       sfx.coin();
       modal.classList.add("hidden");
       logEvent(`💰 <strong>${player.name}</strong> købte skødet på <strong>${tile.name}</strong> for ${formatDKK(tile.price)}!`, "text-emerald-700");
@@ -2688,8 +2770,18 @@ function openRentOrBattleModal(attacker, tile, own) {
   const box = document.getElementById("action-modal-box");
 
   box.innerHTML = `
-    <div class="inline-block px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-extrabold mb-2">
-      Fjendtligt Territorium!
+    <div class="flex items-center justify-between mb-2">
+      <span class="px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-extrabold">
+        Fjendtligt Territorium!
+      </span>
+      <div class="flex items-center gap-1.5">
+        <button id="modal-btn-peek-battle" class="px-2 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-slate-700 text-xs font-bold border border-stone-300 transition" title="Skjul vinduet midlertidigt for at se hele spillepladen">
+          👀 Se brættet
+        </button>
+        <button onclick="pauseModalForBoardView({ type: 'rent_or_battle', attacker, tile, own })" class="w-7 h-7 rounded-full bg-stone-200 hover:bg-stone-300 text-slate-700 font-bold text-xs flex items-center justify-center" title="Luk vindue midlertidigt">
+          ✕
+        </button>
+      </div>
     </div>
     <h3 class="font-display text-2xl font-black text-slate-900">${tile.name}</h3>
     <p class="text-xs text-slate-600 mt-1">Ejet af <strong class="text-slate-900">${defender.avatar} ${defender.name}</strong></p>
@@ -2728,13 +2820,19 @@ function openRentOrBattleModal(attacker, tile, own) {
 
   modal.classList.remove("hidden");
 
+  document.getElementById("modal-btn-peek-battle").onclick = () => {
+    pauseModalForBoardView({ type: "rent_or_battle", attacker, tile, own });
+  };
+
   document.getElementById("btn-pay-rent").onclick = () => {
+    state.pendingDecision = null;
     modal.classList.add("hidden");
     transferMoney(attacker, defender, rent, `betalte leje på <strong>${tile.name}</strong> til ${defender.name}`);
   };
 
   if (canBattle) {
     document.getElementById("btn-declare-battle").onclick = () => {
+      state.pendingDecision = null;
       modal.classList.add("hidden");
       state.battleUsedThisTurn = true;
       openBattleSetupModal(attacker, defender, tile, own, rent, penaltyRent, homeBonus);
@@ -2744,7 +2842,7 @@ function openRentOrBattleModal(attacker, tile, own) {
 
 /**
  * ============================================================================
- * 9. SLAG-DUEL (KANON-DUEL & TERNINGE-SLAG)
+ * 9. SLAG-DUEL (HURTIG KANON-DUEL & TURBASERET TERNINGE-SLAG)
  * ============================================================================
  */
 function openBattleSetupModal(attacker, defender, tile, own, rent, penaltyRent, homeBonus) {
@@ -2766,14 +2864,14 @@ function openBattleSetupModal(attacker, defender, tile, own, rent, penaltyRent, 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
         <button id="choose-cannon" class="p-4 rounded-2xl bg-stone-950 hover:bg-stone-800 border-2 border-amber-500/50 hover:border-amber-400 transition group">
           <div class="text-2xl mb-1">💣</div>
-          <div class="font-bold text-white group-hover:text-amber-400">Kanon-duel (Timing)</div>
-          <p class="text-xs text-stone-400 mt-1">Stop sigtekornet i den grønne træfzone!</p>
+          <div class="font-bold text-white group-hover:text-amber-400">Kanon-duel (Hurtig!)</div>
+          <p class="text-xs text-stone-400 mt-1">Lynhurtigt sigtekorn – stop det i den grønne zone!</p>
         </button>
 
         <button id="choose-dice-duel" class="p-4 rounded-2xl bg-stone-950 hover:bg-stone-800 border-2 border-sky-500/50 hover:border-sky-400 transition group">
           <div class="text-2xl mb-1">🎲</div>
           <div class="font-bold text-white group-hover:text-sky-400">Terninge-slag</div>
-          <p class="text-xs text-stone-400 mt-1">Begge kaster 2 terninger. Højeste sum vinder.</p>
+          <p class="text-xs text-stone-400 mt-1">Kast på skift (én ad gangen). Højeste sum vinder.</p>
         </button>
       </div>
     </div>
@@ -2792,19 +2890,19 @@ function openBattleSetupModal(attacker, defender, tile, own, rent, penaltyRent, 
 
 function startCannonMiniGame(attacker, defender, tile, own, rent, penaltyRent, homeBonus) {
   const box = document.getElementById("battle-modal-box");
-  const zoneWidth = Math.max(14, (homeBonus ? 20 : 30) - own.level * 3);
+  const zoneWidth = Math.max(13, (homeBonus ? 19 : 28) - own.level * 2.5);
   const zoneStart = 50 - zoneWidth / 2;
   const zoneEnd = 50 + zoneWidth / 2;
 
   box.innerHTML = `
     <div class="text-center">
-      <div class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">💣 Kanon-duel</div>
-      <h3 class="font-display text-xl font-bold text-white mb-2">Ramt det grønne felt!</h3>
-      <p class="text-xs text-stone-400 mb-5">${attacker.name}, tryk på <strong>FYR KANONEN!</strong> når markøren er i midten.</p>
+      <div class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">💣 Kanon-duel (Høj hastighed!)</div>
+      <h3 class="font-display text-xl font-bold text-white mb-2">Ram det grønne felt!</h3>
+      <p class="text-xs text-stone-400 mb-5">${attacker.name}, tryk på <strong>FYR KANONEN!</strong> i det præcise øjeblik.</p>
 
       <div class="relative w-full h-10 rounded-full bg-stone-950 border-2 border-stone-700 overflow-hidden mb-6 shadow-inner">
         <div class="absolute top-0 bottom-0 bg-emerald-500/85 border-x-2 border-emerald-300" style="left: ${zoneStart}%; width: ${zoneWidth}%;"></div>
-        <div id="cannon-cursor" class="absolute top-0 bottom-0 w-2 bg-amber-400 shadow-[0_0_12px_#fbbf24]" style="left: 0%;"></div>
+        <div id="cannon-cursor" class="absolute top-0 bottom-0 w-2.5 bg-amber-400 shadow-[0_0_14px_#fbbf24]" style="left: 0%;"></div>
       </div>
 
       <button id="btn-fire-cannon" class="w-full py-4 rounded-2xl bg-red-700 hover:bg-red-600 text-white font-extrabold text-lg tracking-wider shadow-xl border-2 border-amber-300 transition transform active:scale-95">
@@ -2815,14 +2913,19 @@ function startCannonMiniGame(attacker, defender, tile, own, rent, penaltyRent, h
 
   let pos = 0;
   let dir = 1;
-  const speed = homeBonus ? 2.2 : 1.7;
+  // Konstant, høj hastighed (235 % af bjælken pr. sekund) på alle skærme
+  const speedPerSec = 235;
+  let lastTime = performance.now();
   let active = true;
   const cursorEl = document.getElementById("cannon-cursor");
 
-  function loop() {
+  function loop(now) {
     if (!active) return;
-    pos += dir * speed;
-    if (pos >= 98) { pos = 98; dir = -1; }
+    const dtSec = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    pos += dir * speedPerSec * dtSec;
+    if (pos >= 97.5) { pos = 97.5; dir = -1; }
     else if (pos <= 0) { pos = 0; dir = 1; }
     cursorEl.style.left = pos + "%";
     requestAnimationFrame(loop);
@@ -2846,52 +2949,77 @@ function startDiceDuelMiniGame(attacker, defender, tile, own, rent, penaltyRent,
 
   box.innerHTML = `
     <div class="text-center">
-      <div class="text-xs font-bold uppercase tracking-wider text-sky-400 mb-1">🎲 Terninge-slag</div>
+      <div class="text-xs font-bold uppercase tracking-wider text-sky-400 mb-1">🎲 Terninge-slag (Én ad gangen)</div>
       <h3 class="font-display text-xl font-bold text-white mb-4">Kæmp om ${tile.name}!</h3>
 
       <div class="grid grid-cols-2 gap-4 my-4">
-        <div class="rounded-2xl bg-stone-950 border border-sky-500/40 p-4">
-          <div class="text-xs text-stone-400">Angriber</div>
+        <div id="duel-card-att" class="rounded-2xl bg-stone-950 border-2 border-sky-400 p-4 transition-all">
+          <div class="text-xs text-stone-400">1. Angriber</div>
           <div class="font-bold text-white mb-2">${attacker.avatar} ${attacker.name}</div>
           <div id="duel-att-dice" class="text-3xl font-extrabold text-amber-400">🎲 🎲</div>
-          <div id="duel-att-total" class="text-xs text-stone-300 mt-2">Kaster...</div>
+          <div id="duel-att-total" class="text-xs text-stone-300 mt-2">Klar til kast</div>
         </div>
 
-        <div class="rounded-2xl bg-stone-950 border border-rose-500/40 p-4">
-          <div class="text-xs text-stone-400">Forsvarer ${bonus > 0 ? "(+2 Hjemmebane)" : ""}</div>
+        <div id="duel-card-def" class="rounded-2xl bg-stone-950 border border-stone-700 opacity-60 p-4 transition-all">
+          <div class="text-xs text-stone-400">2. Forsvarer ${bonus > 0 ? "(+2 Hjemmebane)" : ""}</div>
           <div class="font-bold text-white mb-2">${defender.avatar} ${defender.name}</div>
           <div id="duel-def-dice" class="text-3xl font-extrabold text-amber-400">🎲 🎲</div>
-          <div id="duel-def-total" class="text-xs text-stone-300 mt-2">Kaster...</div>
+          <div id="duel-def-total" class="text-xs text-stone-300 mt-2">Afventer angriber</div>
         </div>
       </div>
 
-      <button id="btn-roll-duel" class="w-full py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-extrabold text-base shadow-lg transition">
-        🎲 KAST KAMPTERNINGER!
+      <button id="btn-roll-duel-att" class="w-full py-3.5 rounded-2xl bg-sky-500 hover:bg-sky-400 text-stone-950 font-extrabold text-base shadow-lg transition">
+        🎲 ${attacker.name}: KAST TERNINGER!
+      </button>
+      <button id="btn-roll-duel-def" class="hidden w-full py-3.5 rounded-2xl bg-rose-500 hover:bg-rose-400 text-white font-extrabold text-base shadow-lg transition">
+        🎲 ${defender.name}: KAST FORSVARSTERNINGER!
       </button>
     </div>
   `;
 
-  document.getElementById("btn-roll-duel").onclick = (e) => {
+  let attSum = 0;
+
+  // Trin 1: Angriberen kaster først
+  document.getElementById("btn-roll-duel-att").onclick = (e) => {
     e.target.disabled = true;
     sfx.diceBounce(1);
+    document.getElementById("duel-att-dice").textContent = "⏳ ⏳";
 
     const [a1, a2] = rollTwoDice();
-    const [d1, d2] = rollTwoDice();
-    const attSum = a1 + a2;
-    const defSum = d1 + d2 + bonus;
+    attSum = a1 + a2;
 
     setTimeout(() => {
       document.getElementById("duel-att-dice").textContent = `${a1} + ${a2}`;
       document.getElementById("duel-att-total").innerHTML = `Total: <strong class="text-white text-sm">${attSum}</strong>`;
 
+      // Skift fokus til forsvareren
+      document.getElementById("duel-card-att").className = "rounded-2xl bg-stone-950 border border-sky-500/40 p-4 transition-all";
+      document.getElementById("duel-card-def").className = "rounded-2xl bg-stone-950 border-2 border-rose-400 p-4 transition-all";
+      document.getElementById("duel-def-total").textContent = "Din tur til at kaste!";
+
+      document.getElementById("btn-roll-duel-att").classList.add("hidden");
+      document.getElementById("btn-roll-duel-def").classList.remove("hidden");
+    }, 480);
+  };
+
+  // Trin 2: Forsvareren kaster derefter
+  document.getElementById("btn-roll-duel-def").onclick = (e) => {
+    e.target.disabled = true;
+    sfx.diceBounce(1);
+    document.getElementById("duel-def-dice").textContent = "⏳ ⏳";
+
+    const [d1, d2] = rollTwoDice();
+    const defSum = d1 + d2 + bonus;
+
+    setTimeout(() => {
       document.getElementById("duel-def-dice").textContent = `${d1} + ${d2}${bonus > 0 ? ` (+${bonus})` : ""}`;
       document.getElementById("duel-def-total").innerHTML = `Total: <strong class="text-white text-sm">${defSum}</strong>`;
 
       const attackerWon = attSum > defSum;
       setTimeout(() => {
         resolveBattleOutcome(attackerWon, attacker, defender, tile, own, rent, penaltyRent);
-      }, 1100);
-    }, 550);
+      }, 1000);
+    }, 480);
   };
 }
 
@@ -3078,14 +3206,19 @@ function payToPot(player, amount) {
 }
 
 function getTotalLiquidationValue(player) {
-  let houseValue = 0;
+  let assetValue = 0;
   BOARD_TILES.forEach(t => {
     const own = state.ownership[t.id];
-    if (own && own.owner === player.id && own.level > 0) {
-      houseValue += own.level * Math.floor(t.buildCost / 2);
+    if (own && own.owner === player.id) {
+      if (own.level > 0) {
+        assetValue += own.level * Math.floor(t.buildCost / 2);
+      }
+      if (!own.mortgaged) {
+        assetValue += Math.floor(t.price / 2);
+      }
     }
   });
-  return player.money + houseValue;
+  return player.money + assetValue;
 }
 
 function checkBankruptcy(player, winner) {
@@ -3096,14 +3229,14 @@ function checkBankruptcy(player, winner) {
   } else {
     showSimpleModal(
       "⚠️ Du er i minus!",
-      `Din kassebeholdning er på <strong class="text-rose-700">${formatDKK(player.money)}</strong>! Åbn dine skødekort og sælg huse for at komme i plus, inden du afslutter turen.`
+      `Din kassebeholdning er på <strong class="text-rose-700">${formatDKK(player.money)}</strong>! Åbn dine skødekort og sælg huse eller <strong>pantsæt grunde</strong> for at komme i plus, inden du afslutter turen.`
     );
     return false;
   }
 }
 
 function endTurn() {
-  if (state.isAnimating || state.gameOver) return;
+  if (state.isAnimating || state.gameOver || state.pendingDecision) return;
   const currentP = state.players[state.currentPlayer];
 
   if (currentP.money < 0) {
@@ -3138,7 +3271,8 @@ function triggerVictory(winner, loser) {
     BOARD_TILES.forEach(t => {
       const own = state.ownership[t.id];
       if (own && own.owner === p.id) {
-        worth += t.price + (own.level * (t.buildCost || 0));
+        const baseVal = own.mortgaged ? Math.floor(t.price / 2) : t.price;
+        worth += baseVal + (own.level * (t.buildCost || 0));
       }
     });
     return worth;
